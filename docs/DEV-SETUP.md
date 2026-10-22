@@ -4,18 +4,54 @@ Everything here is what *you* have to do once, on your machine. Everything in `C
 
 ---
 
+## 0. The three project files
+
+| File | What it is |
+|---|---|
+| `FootbalSim.sln` | Solution containing all three CLI projects. Open in VS / Rider / `dotnet build`. |
+| `src/FootbalSim.Core/FootbalSim.Core.csproj` | Compiles `unity/Assets/_Project/Core/**/*.cs` into a `netstandard2.1` library. **The sources are shared with Unity — there is no copy.** |
+| `src/FootbalSim.Simulator/FootbalSim.Simulator.csproj` | `net8.0` console app that simulates a career. |
+| `tests/Core.Tests/Core.Tests.csproj` | `net8.0` NUnit suite referencing the Core project. |
+
+Build output goes to `src/**/bin` and `src/**/obj`, which are git-ignored and outside `unity/Assets`,
+so Unity never imports them.
+
+---
+
 ## 1. Run the fast tests first (no Unity needed)
 
 ```bash
 cd FootbalSim
-dotnet test tests/Core.Tests
+dotnet test
 ```
 
-That compiles `unity/Assets/_Project/Core/**/*.cs` against NUnit and runs ~60 assertions in a couple of seconds. It catches every logic regression before Unity opens.
+~60 assertions in a couple of seconds. Catches every logic regression before Unity opens.
 
 Requirements: .NET SDK 8 (`dotnet --version`). Nothing else.
 
-> The test project pins `<LangVersion>9.0</LangVersion>`, which is Unity 6's level. If it compiles here, it compiles in Unity.
+> Both Core and the tests pin `<LangVersion>9.0</LangVersion>`, which is Unity 6's level, and Core
+> targets `netstandard2.1`, which is Unity's API level. If it compiles here, it compiles in Unity.
+
+---
+
+## 1b. Run the simulation (no Unity needed)
+
+```bash
+dotnet run --project src/FootbalSim.Simulator -- --seed 42 --seasons 3
+```
+
+Prints, from the real Core library:
+
+- the first week's schedule (2 facility + 2 gym + 1 match, 2 off days)
+- season-by-season attribute growth through the XP curve
+- match record, goals, assists, average rating
+- career level and the training multiplier
+- market value and wage
+- the evening news bulletin
+- a transfer approach with the wheel probability and the fan/coach penalty on refusal
+
+That is the whole simulation layer, exercised end to end. If a number looks wrong, it is a `Balance`
+question, not a rendering one.
 
 ---
 
@@ -23,6 +59,8 @@ Requirements: .NET SDK 8 (`dotnet --version`). Nothing else.
 
 1. Unity Hub → **Unity 6 LTS** → New project → **3D (URP)**.
 2. Project location: `FootbalSim/unity` — i.e. the folder that already contains `Assets/_Project`.
+   *(If Hub refuses to use a non-empty folder, create the project elsewhere and move `Assets/_Project`
+   into it.)*
    *Unity will create `Assets/`, `ProjectSettings/`, `Packages/` around the existing `Assets/_Project`.*
 3. Open it, then check two settings:
    - **Edit → Project Settings → Player → API Compatibility Level → .NET Standard 2.1** (default). `System.MathF` needs it.

@@ -68,12 +68,36 @@ From `GDD.md` §13:
 
 ---
 
-## Getting started (once M0 lands)
+## Run it now (no Unity required)
+
+Requires the **.NET 8 SDK** only.
 
 ```bash
-git clone <repo>
-dotnet test tests/Core.Tests      # ~60 tests, seconds, no Unity needed
-# then open FootbalSim/unity with Unity 6 LTS
+git clone <repo> && cd FootbalSim
+
+# 1. Play three seasons headlessly and watch the systems work
+dotnet run --project src/FootbalSim.Simulator
+
+# 2. Run the unit tests (~60 assertions, ~5 seconds)
+dotnet test
+
+# 3. Or build everything
+dotnet build FootbalSim.sln
 ```
 
-See [`docs/DEV-SETUP.md`](docs/DEV-SETUP.md) for the exact Unity settings and the current file map.
+The simulator prints the weekly schedule, per-season training gains, match record, career level,
+market value, the evening news bulletin and a transfer negotiation — all from the same Core library
+the Unity build uses.
+
+Options: `dotnet run --project src/FootbalSim.Simulator -- --seed 42 --seasons 5`
+
+## Solution layout
+
+| Project | Target | Purpose |
+|---|---|---|
+| `src/FootbalSim.Core` | netstandard2.1 | Engine-free gameplay core (32 files). Compiles the same sources Unity uses. |
+| `src/FootbalSim.Simulator` | net8.0 | Console app: headless career simulation. |
+| `tests/Core.Tests` | net8.0 | NUnit suite. `dotnet test` |
+
+Open `FootbalSim.sln` in Visual Studio, Rider or VS Code. The Unity editor project lives in `unity/`
+and is opened separately — see [`docs/DEV-SETUP.md`](docs/DEV-SETUP.md).
