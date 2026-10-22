@@ -1,0 +1,14 @@
+{
+    "name": "FootbalSim.Presentation",
+    "rootNamespace": "FootbalSim.Presentation",
+    "references": ["FootbalSim.Core", "FootbalSim.Data", "FootbalSim.Gameplay"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

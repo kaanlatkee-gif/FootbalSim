@@ -1,0 +1,31 @@
+# Unity: force text serialisation for scenes/prefabs/assets (set in Editor too)
+*.unity text
+*.prefab text
+*.asset text
+*.mat text
+*.anim text
+*.controller text
+*.meta text
+
+# Git LFS for binary assets (run: git lfs install)
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.tga filter=lfs diff=lfs merge=lfs -text
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.fbx.meta text
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.ogg filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+
+# Line endings
+* text=auto
+*.cs text eol=lf diff=csharp
+*.md text eol=lf
+*.json text eol=lf
+*.asmdef text eol=lf
+*.csproj text eol=lf
+
+# Keep Core pure: mark it for review by CODEOWNERS if you add one
+unity/Assets/_Project/Core/** linguist-language=C#

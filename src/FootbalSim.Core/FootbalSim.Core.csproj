@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <!-- Unity 6 compiles against .NET Standard 2.1 with C# 9. Keeping the same here means
+         anything that builds outside Unity builds inside it, and vice versa. -->
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>FootbalSim.Core</AssemblyName>
+    <RootNamespace>FootbalSim.Core</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Description>Engine-free gameplay core for FootbalSim. No UnityEngine references.</Description>
+  </PropertyGroup>
+
+  <!-- The sources live inside the Unity project so Unity and the CLI build the same files. -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\unity\Assets\_Project\Core\**\*.cs"
+             LinkBase="Core" />
+  </ItemGroup>
+
+</Project>
