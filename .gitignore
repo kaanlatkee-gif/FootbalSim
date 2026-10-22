@@ -1,0 +1,53 @@
+# ---------- Unity ----------
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Bb]uild/
+unity/[Bb]uilds/
+unity/[Ll]ogs/
+unity/[Uu]ser[Ss]ettings/
+unity/[Mm]emoryCaptures/
+unity/[Rr]ecordings/
+unity/.vs/
+unity/.idea/
+unity/.vscode/
+unity/*.csproj
+unity/*.sln
+unity/*.suo
+unity/*.user
+unity/*.pidb
+unity/*.booproj
+unity/*.svd
+unity/*.pdb
+unity/*.mdb
+unity/*.opendb
+unity/*.VC.db
+unity/Assets/AssetStoreTools*
+unity/Assets/StreamingAssets/aa.meta
+unity/Assets/StreamingAssets/aa/*
+symlink_*
+*.apk
+*.aab
+*.unitypackage
+crashlytics-build.properties
+
+# ---------- .NET / tests ----------
+bin/
+obj/
+tests/**/bin/
+tests/**/obj/
+.vs/
+TestResults/
+
+# ---------- OS / editors ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# ---------- Local saves / captures ----------
+docs/_local/
+screenshots/
+captures/
+*.mp4
