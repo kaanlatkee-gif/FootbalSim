@@ -1,59 +1,69 @@
 # FootbalSim
 
-A first-person football **career life sim**: you sleep, cook, shower, train and drink your way through a season. Your body is the build — every attribute is earned by physically doing the drill — and the world (the coach, the bartender, the TV news) reacts to what you actually did.
+A **first-person football career sim**. You live a young player's week — sleep, cook, shower, train, lift, drink — and then you walk out and **play the match yourself**, in first person, with the ball at your feet. Every attribute is earned by doing the drill, and the world (coach, fans, TV news) reacts to what you actually did.
 
-> *Football Manager meets The Sims, in first person, with a controller in your hand instead of a spreadsheet.*
+> *Football Manager's career depth, The Sims' daily routine, and a first-person match you actually play.*
 
-**Status:** pre-production. Design and plan are complete; no code yet.
-**Engine:** Unity 6 LTS · **Language:** C# · **Target:** PC / Steam
+**Engine:** Unity 6 LTS · **Language:** C# · **Platform:** PC / Steam
+**Status:** pre-production — design, architecture and plan complete; M0 not yet started.
 
 ---
 
 ## Documents
 
-| Document | What it is | Read it if you want |
+| Document | What it is |
+|---|---|
+| [`docs/GDD.md`](docs/GDD.md) | Game design — **v0.2**, covering Stages 1–7 of the source note |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | C#/Unity architecture: Core-first layout, match layer, progression, saves, performance |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | 12 milestones, M0–M9, **≈ 49 weeks** to a Steam launch |
+| [`docs/SOURCE-TRANSLATION.md`](docs/SOURCE-TRANSLATION.md) | Literal English translation of both revisions of the Turkish note |
+
+---
+
+## The idea in six lines
+
+1. Everything is **3D and first-person** — the city, the interiors, the pitch.
+2. A week has **5 or 6 active days**: 2 gym sessions, 2 facility sessions, 1–2 matches. Off days are skipped or limited to the market.
+3. **13 attributes** (7 technical, 6 physical) rise only through XP earned by physically performing drills — never from a menu.
+4. **Matches are played**: WASD + mouse, sprint, knock-on, aerials, slide tackles, skill-move combos, left-click shoot, right-click pass.
+5. Your match rating (starting at 6.5) earns career XP; levels give a permanent **+4% training XP** each.
+6. Transfers run both ways — clubs offer you, or you approach them and spin the **acceptance wheel**; a rejected approach costs fan and coach relationships.
+
+---
+
+## Milestones at a glance
+
+| | Milestone | Weeks |
 |---|---|---|
-| [`docs/GDD.md`](docs/GDD.md) | Game design document — translated, restructured and expanded from the original Turkish note | To know what the game *is* |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | C# / Unity technical architecture, project layout, coding conventions, testing | To know how it will be *built* |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | 8-milestone plan (M0–M7, ~37 weeks), scope-control and risk tables | To know *when* and *in what order* |
-| [`docs/SOURCE-TRANSLATION.md`](docs/SOURCE-TRANSLATION.md) | Faithful English translation of `Fotbalcareer.txt`, with translator's notes | To check the polish against the original |
+| M0 | Foundation — Core library, CI, tests | 2 |
+| M1 | Vertical slice — one full day | 4 |
+| M2 | Stage 1 — menus, settings, save | 3 |
+| M3 | Stage 2–3 — city and interiors | 5 |
+| M4 | Stage 4 — XP, attributes, 13 drills | 6 |
+| M5a–c | **The playable match** | 10 |
+| M6 | Career — season, transfers, leagues | 5 |
+| M7 | Schedule and day rules | 2 |
+| M8 | Content and polish | 6 |
+| M9 | Steam beta → launch | 6 |
+
+Full detail, cut lists, the match fidelity ladder and the risk register: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ---
 
-## The idea in five lines
+## The one risk that matters
 
-1. You are a young player at the start of a career. A day is a budget of hours, energy and money.
-2. 13 attributes (7 technical, 6 physical) — **no XP, no skill tree** — rise only by doing first-person drills.
-3. Your body state feeds those drills: sleep, food, hygiene and alcohol decide whether training actually lands.
-4. The city is small and dense: flat, facility, market, bar, car gallery, gym.
-5. The television tells the city what you did — a great match, a ten-drink night, a missed session.
+A playable first-person football match is roughly as large as the whole life-sim half of the game. The plan gives it 10 weeks and a **hard fidelity cap** ("arcade-authentic", not FC/FIFA), with a written fallback at week 4. Read `ROADMAP.md` §2 before promising a date.
 
 ---
 
-## Milestones
+## Decide before M1
 
-| | Milestone | Weeks | Proves |
-|---|---|---|---|
-| M0 | Foundation | 2 | Tooling, CI, clock, tests |
-| M1 | Vertical slice | 4 | One full day loop, end to end |
-| M2 | Stage 1 — menus, settings, save | 3 | New career → play → reload |
-| M3 | Stage 2–3 — city, flat, market, bar | 5 | The life sim works |
-| M4 | Stage 4–5 — attributes + 13 minigames | 6 | The game's heart |
-| M5 | Career, matches, media | 5 | A full season |
-| M6 | Content and polish | 6 | Feature-complete |
-| M7 | Beta → v1.0 | 6 | Ship |
+From `GDD.md` §13:
 
-Details, cut lists and traps: [`docs/ROADMAP.md`](docs/ROADMAP.md).
-
----
-
-## Open decisions before M1
-
-These are listed in full in `docs/GDD.md` §14. The ones that block work:
-
-- **D1 — Are matches playable?** Recommended: moment-based hybrid (~10 key moments per match), not an 11v11 match engine.
-- **D9 — Shipping title.** "FootbalSim" is a typo in the repo name; decide before the store page exists.
-- **D6 — Multi-season in v1.0?** Recommended: no, ship season 1 with a continue hook.
+- **D12 — weekly training volume:** 2 sessions of *each* type (2 gym + 2 facility) — the only reading that reconciles Stages 6 and 7.
+- **D13 — cities at launch:** 4 city kits (TR, EN, ES, DE) and six reskins; ten bespoke cities is out of scope.
+- **D18 — Steam:** Early Access once the match and one season work (M7), or a single 1.0 launch.
+- **D9 — title:** "FootbalSim" is a typo in the repo name; decide before the store page exists.
 
 ---
 
@@ -61,7 +71,6 @@ These are listed in full in `docs/GDD.md` §14. The ones that block work:
 
 ```bash
 git clone <repo>
-# Open the Unity project in unity/ with Unity 6 LTS
-# Run the fast, engine-free tests:
-dotnet test tests/Core.Tests
+dotnet test tests/Core.Tests      # fast, engine-free gameplay tests
+# then open unity/ with Unity 6 LTS
 ```

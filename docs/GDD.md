@@ -1,145 +1,166 @@
 # FootbalSim — Game Design Document
 
-**Working title:** FootbalSim *(repository name; the shipping title is an open decision — see `D9`)*
-**Version:** 0.1 — translated, restructured and expanded from the original Turkish design note `Fotbalcareer.txt`
+**Version:** 0.2 — incorporates the **second revision** of the source note (`Footbalcareer.txt`)
 **Date:** 2026-10-22
-**Status:** Pre-production / concept locked, numbers unverified
+**Status:** Pre-production · concept locked · balance unverified
+**Companion documents:** `ARCHITECTURE.md` (how it is built), `ROADMAP.md` (when), `SOURCE-TRANSLATION.md` (literal source)
+
+---
+
+## Revision history
+
+| Version | Change |
+|---|---|
+| 0.1 | First translation and polish of the original note (Stages 1–5) |
+| **0.2** | **Second source revision ingested.** Everything is 3D and first-person; matches are *played*, not simulated; progression is XP-gated with a player level; the week has 5–6 fixed active days; transfers, 10 leagues, countries and relationships are in scope; the target is a Steam release. |
+
+What changed in 0.2, in one line each:
+
+| v0.2 change | Where |
+|---|---|
+| Full first-person **match gameplay** (FC-style controls, dribble combos) replaces the moment-based hybrid | §4.5, §6.2, §8.2 |
+| Facility training is **real 3D drills**, not minigames; gym keeps station minigames | §9 |
+| Attributes rise through **XP thresholds**, not direct gains | §4.3–4.5 |
+| **Player level** with a +4%/level training XP multiplier | §3.5 |
+| **Weekly schedule**: 5–6 active days, off-days are skipped | §4.1, §5.1 |
+| **Transfers**, 10 leagues, countries, market value, negotiation wheel | §5.9 |
+| **Relationships**: fans, coach, girlfriend | §5.8 |
+| Target: **Steam release** | §12, roadmap §13 |
 
 ---
 
 ## How to read this document
 
-The original note was a stream-of-consciousness feature list written in Turkish. This document does three things:
-
-1. **Translates** every idea faithfully — nothing in the source is dropped.
-2. **Polishes** it into a coherent design: the loose ideas are grouped into systems, the missing connective tissue (time, economy, progression, failure states) is filled in, and contradictions are resolved.
-3. **Flags** every place where the original was ambiguous, plus every number that is a placeholder.
-
-Conventions used below:
-
 | Marker | Meaning |
 |---|---|
-| **Source** | Present in the original note, translated as-is |
-| **Proposal** | Added by this document to make the idea playable; must be approved or rejected |
-| **`D#`** | An open decision listed in §14 |
-| **`[TBD]`** | Number to be tuned in playtest, not a design commitment |
+| **Source** | Present in the original note |
+| **v0.2** | Added by the second revision of the note |
+| **Proposal** | Added here to make the idea playable; approve or reject |
+| **`D#`** | Open decision in §13 |
+| **`[TBD]`** | Placeholder number to tune in playtest |
 
-Every number in this document is a **first pass**. Balance lives in data files (see `ARCHITECTURE.md` §9), never in code, so tuning does not require a rebuild.
+Every number is a first pass. Balance lives in data files, never in code (`ARCHITECTURE.md` §4), so tuning never requires a rebuild.
 
 ---
 
 ## 1. High concept
 
-### 1.1 One-paragraph pitch
+### 1.1 Pitch
 
-**FootbalSim** is a first-person life-and-career simulation. You are a young football player at the start of your professional career: you sleep in a rented flat, you shop and cook, you take the bus or drive to the training facility, you grind drills in first person, you drink too much at the bar on a Saturday, and on Sunday a television in your own living room tells the city what it thinks of you. Everything you do between matches — how you sleep, what you eat, whether you shower, which drills you repeat — feeds a 13-attribute player model that decides how good you actually are when the whistle blows.
+**FootbalSim** is a first-person football career sim. You live a young player's week: you sleep, cook, shower, commute, train at the facility, lift in the gym, drink at the bar, and then — on match day — you actually walk out and play, in first person, with the ball at your feet. Nothing is a menu: training is a drill you perform, a match is 90 minutes you play, and everything you did between matches decides what your body can do when the whistle blows.
 
 ### 1.2 Elevator pitch
 
-> *"Football Manager meets The Sims, in first person, with a controller in your hand instead of a spreadsheet."*
+> *"Football Manager's career depth, The Sims' daily routine, and a first-person match you actually play — one player's life, one season at a time."*
 
 ### 1.3 Facts
 
 | Field | Value |
 |---|---|
-| Genre | Life sim / sports career RPG |
-| Perspective | First person, mouse + keyboard, gamepad supported |
-| Platform | PC (Windows first), Steam; console later `D8` |
-| Engine | Unity 6 LTS + C# (see `ROADMAP.md` §1) |
-| Session length | 20–40 min (≈ 1–2 in-game days) |
-| Target audience | 16–35, football fans who play career modes and life sims |
-| References | *Football Manager* (career depth), *The Sims* (needs & objects), *Yakuza* (dense small city + minigames), *Minecraft* villager trading (shop UI), *Persona* (calendar + daily routine) |
-| Content scale (v1.0) | 1 city district, 6 building types, 8 interiors, 13 drills, ~40 purchasable items, 1 league season |
+| Genre | First-person football career / life sim |
+| Perspective | **First person — on foot and on the pitch** (v0.2) |
+| Platform | PC (Windows), Steam; gamepad supported |
+| Engine | Unity 6 LTS + C# |
+| Session | 25–45 min (≈ 1 in-game day or 1 match) |
+| Audience | 16–35, football career-mode players and life-sim players |
+| References | *FC/FIFA* (match controls), *Football Manager* (career), *The Sims* (needs), *Yakuza* (dense city), *Persona* (calendar) |
+| Content scale v1.0 | 10 leagues (data), 4 country city kits, 8 interiors per city, 13 attributes, 13 drills, 11v11 matches, 34-match season |
 
 ### 1.4 What makes it different
 
-Career modes are menus. Life sims have no sport. **FootbalSim makes the boring parts of a footballer's life the gameplay**: the sleep you skipped, the kebab you cooked, the shower you didn't take, the ten drinks you shouldn't have had — all of it is legible on the pitch and in the press.
+Career modes are menus; life sims have no sport. FootbalSim connects them physically: the sleep you skipped shows up as a worse first touch, the extra gym session shows up as a faster sprint, the ten drinks show up on the news, and the match itself is played from inside the player's head rather than watched from a spreadsheet.
 
----
+### 1.5 Design pillars
 
-## 2. Design pillars
-
-| # | Pillar | What it means in practice | Test question |
+| # | Pillar | In practice | Test question |
 |---|---|---|---|
-| P1 | **The body is the build** | No skill trees, no perks. Attributes rise only through physical, in-world action. | *Can the player raise a stat without physically doing the thing?* If yes, cut it. |
-| P2 | **Routine is the loop** | A day is a budget of hours. Every activity spends time, energy or money. | *Does this feature create a trade-off between two good options?* |
-| P3 | **The world talks back** | The TV, the bartender, the coach and the tabloids reflect what you actually did. | *Does the world acknowledge the player's choices within one in-game day?* |
-| P4 | **Small but solid** | One city block done properly beats an open world done badly. | *Can we finish this to shipping quality in the milestone?* |
+| P1 | **The body is the build** | No perks, no skill trees. Attributes rise only from XP earned by physically doing the drill. | *Can a stat rise without doing the activity?* If yes, cut it. |
+| P2 | **Routine is the loop** | A week has 5–6 scheduled days; each day spends hours, energy and money. | *Does this create a trade-off between two good options?* |
+| P3 | **You play, not watch** | Matches and facility drills are played in first person. | *Could this be a menu instead?* Then it should not be. |
+| P4 | **The world talks back** | TV, coach, fans and tabloids react to what you actually did. | *Does the world acknowledge a choice within one day?* |
+| P5 | **Small but solid** | One city block done properly beats an open world done badly. | *Can we ship this at quality in this milestone?* |
 
 ---
 
-## 3. Core loop
+## 2. Core loop
 
-### 3.1 Moment-to-moment (seconds)
+### 2.1 Moment-to-moment
 
-Walk → look at an interactable → prompt appears (`E`) → use it → world state changes (energy, money, attribute, time).
+Walk → focus an object → prompt (`E`) → interact → world state changes. On the pitch: receive → dribble → pass/shoot → react.
 
-### 3.2 Day loop (20–30 min real time)
+### 2.2 Day loop
 
 ```
-   wake up ──► needs check ──► plan the day ──► travel ──► activity ──► travel ──► …
-      ▲                            │                        │
-      │                            │  training            │  match day
-      │                            ▼                        ▼
-      └──────── sleep ◄──── return home ◄──── evening (bar / TV / rest)
+ active day
+   wake ──► needs check ──► (optional) roam / NPCs / shop ──► session start
+                                                             │
+                        training day ────────────────────────┤
+                        match day ───────────────────────────┤
+                                                             ▼
+                      3 drill slots          OR        90-minute match
+                            │                              │
+                            └────────► return home ◄────────┘
+                                          │
+                                    TV / news / sleep
 ```
 
-The player answers three questions every day:
-1. **What do I train?** (which attribute, which drill, and how much energy can I afford to spend)
-2. **What do I spend?** (money and hours are both scarce)
-3. **How do I recover?** (sleep quality, food, shower, rest — all feed tomorrow's training efficiency)
+### 2.3 Week loop (v0.2)
 
-### 3.3 Week loop
+A week has **5 or 6 active days**. The rest are off-days: the UI offers "skip to next scheduled day", and if the player insists on entering the city anyway, **only the market and the flat are open**.
 
-| Day | Content |
-|---|---|
-| Mon–Fri | 2 training slots/day (morning, afternoon), optional gym slot, club-mandated session on Wed |
-| Sat | Match day `D1` |
-| Sun | Rest day — coach unavailable, bar busy, media digest |
+| Day | Activity | Content |
+|---|---|---|
+| 1 | **Gym session** | 3 drill slots (physical) |
+| 2 | **Facility session** | 3 drill slots (technical) |
+| 3 | Off day | Skip, or market only |
+| 4 | **Gym session** | 3 drill slots |
+| 5 | **Facility session** | 3 drill slots |
+| 6 | **Match day** | Play or skip |
+| 7 | Off day — **or a second match** in a European week | Skip / market |
 
-### 3.4 Season loop (v1.0 = one season, ~30 matches)
+**European weeks** (club has a continental fixture) have **6 active days**: two matches instead of one rest day.
 
-Match performance → rating → reputation, wage, and selection → higher-level drills and clubs unlocked → end-of-season offer screen → **either** roll into season 2 with carried attributes **or** end the career with a summary. `D6` decides whether v1.0 ships with more than one season.
+> **Source reconciliation.** Stage 6 says "trainings can be done 2 times a week, 3 trainings each"; Stage 7 says a week contains 2 gym + 2 facility sessions. Read together, the consistent interpretation is **2 sessions of each type per week, 3 drills per session** — 12 drill slots weekly. If the author meant 2 sessions *in total*, the progression numbers in §4 halve; see `D12`.
+
+### 2.4 Season and career loop
+
+34-match league season → end-of-season review → transfer window (offers in and out) → new season in the same or a new country → map changes with the country (§4.8).
 
 ---
 
-## 4. Player progression model
+## 3. Player progression model (v0.2 — rewritten)
 
-### 4.1 Attributes — 13 total, 1–99 scale
+### 3.1 The 13 attributes
 
-**Source:** the original lists seven technical and six physical attributes, each tied to a training activity.
+**Source:** seven technical and six physical attributes, each tied to a training activity. Unchanged from v0.1.
 
-| Group | Attribute | ID | Trained by | Source label |
+| Group | Attribute | ID | Trained at | Drill |
 |---|---|---|---|---|
-| Technical | Finishing | `FIN` | One-on-one shooting drill | BİTİRİCİLİK |
-| Technical | Dribbling | `DRI` | Cone slalom | DRİBLİNG |
-| Technical | Heading | `HEA` | Cross-and-head | KAFA VURUŞU |
-| Technical | Crossing | `CRO` | Wide-area delivery | ORTA YAPMA |
-| Technical | Passing | `PAS` | Rondo / wall passes | PAS |
-| Technical | Tackling | `TAC` | Shield-and-steal | TOP KAPMA |
-| Technical | Long shots | `LON` | Long-range shooting | UZAKTAN ŞUT |
-| Physical | Sprint speed | `SPD` | Treadmill intervals | HIZ |
-| Physical | Stamina | `STA` | Treadmill endurance | DAYANIKLILIK |
-| Physical | Balance | `BAL` | Pull-up bar holds | DENGE |
-| Physical | Strength | `STR` | Dumbbell circuit | GÜÇ |
-| Physical | Jumping | `JMP` | Jump Squad | ZIPLAMA |
-| Physical | Acceleration | `ACC` | Weighted sled push | HIZLANMA |
+| Technical | Finishing | `FIN` | Facility | 3D one-on-one |
+| Technical | Dribbling | `DRI` | Facility | 3D slalom |
+| Technical | Heading | `HEA` | Facility | 3D crossing + header |
+| Technical | Crossing | `CRO` | Facility | 3D wide delivery |
+| Technical | Passing | `PAS` | Facility | 3D rondo |
+| Technical | Tackling | `TAC` | Facility | 3D shield-and-steal |
+| Technical | Long shots | `LON` | Facility | 3D shooting range |
+| Physical | Sprint speed | `SPD` | Gym | Treadmill intervals (station) |
+| Physical | Stamina | `STA` | Gym | Endurance run (station) |
+| Physical | Balance | `BAL` | Gym | Bar hold (station) |
+| Physical | Strength | `STR` | Gym | Dumbbell circuit (station) |
+| Physical | Jumping | `JMP` | Gym | Jump Squad (station) |
+| Physical | Acceleration | `ACC` | Gym | Sled push (station) |
 
-**Proposal:** a 14th conceptual block, **Goalkeeping** (`GK`), is intentionally out of scope for v1.0. The player character is always an outfield player. `D5` covers whether GK reflexes are ever added.
+Goalkeeping remains out of scope (`D5`).
 
-**Proposal:** attributes are the *only* progression currency. There is no XP bar, no level, no perk tree. Training awards attribute "training points" directly (§4.4).
+### 3.2 Overall rating
 
-### 4.2 Overall rating
-
-**Proposal** (the original asks for an "overall system" but does not define it). Overall is a **position-weighted average** of the 13 attributes, displayed 1–99.
+Unchanged: a **position-weighted average**, 1–99, computed on demand, never saved.
 
 ```
 Overall = round( Σ(attribute_i × weight_i) / Σ(weight_i) )
 ```
 
-Weights are authored per position profile as data, not code. Starting profiles:
-
-| Attribute | ST | W (wing) | CM | CB |
+| Attribute | ST | W | CM | CB |
 |---|---:|---:|---:|---:|
 | Finishing | 0.22 | 0.10 | 0.05 | 0.02 |
 | Dribbling | 0.12 | 0.20 | 0.08 | 0.03 |
@@ -155,193 +176,319 @@ Weights are authored per position profile as data, not code. Starting profiles:
 | Jumping | 0.08 | 0.01 | 0.03 | 0.09 |
 | Acceleration | 0.05 | 0.10 | 0.08 | 0.09 |
 
-Rules:
-- Weights **need not sum to 1.0**; they are normalised on load. This lets designers edit one number without rebalancing the row.
-- The player picks a position at career creation. The profile is **fixed** in v1.0 (no re-training) — `D3`.
-- Overall is a *derived* value. Never saved; always recomputed. This prevents save/version drift.
+Weights are normalised on load and are authored per position as data.
 
-### 4.3 Display
+### 3.3 Attribute XP — the only way a point is earned (v0.2)
 
-The pause menu shows overall, both group averages, and the full 13-bar attribute sheet. The training facility shows the same sheet so the player can plan before walking to a drill.
+**Source:** *"rather than an attribute increasing in a single training, the player must collect a certain amount of XP for +1: 65→66 needs 1000, 66→67 needs 1250, each time +250."*
 
-### 4.4 Training economy
-
-**Proposal.** Every drill returns a **performance score** (0.00–1.00) from the minigame. That score converts to attribute progress:
+Each attribute has its own XP pool and current value. A point costs:
 
 ```
-gain = (baseGain + scoreBonus × score)     // raw progress points
-     × headroom(attribute)                   // diminishing returns near 99
-     × fatigueMultiplier                     // 1.00 rested → 0.35 exhausted
-     × coachBonus                            // 1.00 solo, 1.15 with coach session
-     × weeklyMultiplier(drill)               // 1.00, 0.70, 0.40, 0.20 for 1st–4th use of that drill this week
+cost(a → a+1) = max(250, 1000 + 250 × (a − 65))
 ```
 
-| Term | Formula | Notes |
+| Current | Cost to next | Current | Cost to next |
+|---:|---:|---:|---:|
+| 60–62 | 250 | 80 | 4 750 |
+| 63 | 500 | 85 | 6 000 |
+| 64 | 750 | 90 | 7 250 |
+| 65 | 1 000 | 95 | 8 500 |
+| 70 | 2 250 | 98 | 9 250 |
+| 75 | 3 500 | 99 | — (max) |
+
+XP is **per attribute**, not a global pool. Earning finishing XP never moves passing.
+
+### 3.4 Training XP awards (v0.2)
+
+**Source:** *"success will be 50/100/150/200/250 XP; each time the same training is done on a different day it gives a 1.02× multiplier — the second time 255 instead of 250, assuming a top-tier performance."*
+
+A drill produces a performance score (0–1). Five tiers:
+
+| Performance | Grade | XP |
+|---|---|---:|
+| 0.00 – 0.39 | Poor | 50 |
+| 0.40 – 0.59 | Average | 100 |
+| 0.60 – 0.79 | Good | 150 |
+| 0.80 – 0.94 | Great | 200 |
+| 0.95 – 1.00 | Perfect | 250 |
+
+**Repeat multiplier:**
+
+```
+multiplier(drill) = min(1.50, 1.02 ^ priorSessionsOnDifferentDays(drill))
+```
+
+The first time gives ×1.00; the second ×1.02; the third ×1.0404. It rewards *spreading* a drill across weeks, not grinding it in one day. Each session counts only once per day.
+
+**Weekly constraints (both from the source and required for the maths to work):**
+
+| Rule | Value |
+|---|---|
+| Sessions per week | 2 facility + 2 gym |
+| Drill slots per session | 3 |
+| Same drill in one session | maximum 2 |
+| Same drill per week (one type) | therefore maximum 4 |
+| Repeat multiplier window | across different days only |
+
+**Worked example — why the numbers hold together.** A player at 65 trains finishing in the two facility sessions, using both allowed slots each time:
+
+```
+4 sessions × 250 XP × (1.00 + 1.02 + 1.0404 + 1.0612) ≈ 1 031 XP
+Cost of 65 → 66 = 1 000 XP  →  ≈ 1 attribute point per week (focused)
+```
+
+At overall 80 the same effort yields 1 031 / 4 750 ≈ **0.22 points/week**; at 90, **0.14**. The cost curve is what makes a career feel earned, and the "max 2 per session" rule is what prevents a single stat from being maxed in one season.
+
+### 3.5 Player level (v0.2)
+
+**Source:** *"the player also gets a football rating in matches… they earn XP at the end of the match based on that score; this XP does not directly affect attributes, but when the player levels up, level 1 gives a 0% training XP multiplier, level 2 gives 4%, level 3 gives 8%, rising like that — but levelling up should be hard."*
+
+**Two separate currencies, deliberately:**
+
+| Currency | Earned from | Spent on |
 |---|---|---|
-| `baseGain` | 8 | `[TBD]` |
-| `scoreBonus` | 32 | A perfect drill is 5× a lazy one |
-| `headroom(a)` | `(1 − a/99)^1.5` | A 20-rated player climbs fast; a 90-rated player barely moves |
-| `fatigueMultiplier` | `lerp(1.0, 0.35, fatigue01)` | `fatigue01` = 1 − energy/100 after the drill |
-| `weeklyMultiplier` | authored per drill | Anti-grind: repeating one drill is punished |
+| Attribute XP | Training drills | That attribute's next point |
+| **Career XP** | Match ratings | Player **level** |
 
-An attribute point costs **100 progress points** at all levels; the headroom term already handles the difficulty curve. A well-rested 1.0-score session is worth ≈ 1.4 attribute points at 40 overall, ≈ 0.5 at 75.
+Career XP per match (proposal):
 
-**Failure states:** a score below 0.25 awards **no** progress and costs double energy. This is what makes sleeping and eating matter.
+```
+matchXp = 120 × max(0, rating − 5.0) + resultBonus + goalBonus + assistBonus
+resultBonus: win 120 / draw 60 / loss 0
+goalBonus: 60 per goal, assistBonus: 40 per assist
+```
+
+Level curve — deliberately slow:
+
+```
+careerXpForLevel(L) = 1000 × (L − 1)² + 500 × (L − 1)
+```
+
+| Level | Total XP | Level | Total XP |
+|---:|---:|---:|---:|
+| 2 | 1 500 | 6 | 27 500 |
+| 3 | 5 000 | 7 | 39 000 |
+| 4 | 10 500 | 8 | 52 500 |
+| 5 | 18 000 | 10 | 85 500 |
+
+A 34-match season at an average 6.8 rating and a mid-table record earns ≈ 9 000 career XP — **level 3 after season one**, and roughly level 5 after season three. That is the intended "hard".
+
+**Level reward — training XP multiplier:**
+
+```
+trainingMultiplier = 1 + 0.04 × (level − 1)      // cap 2.00 at level 26
+```
+
+So a level-6 player trains 20% faster than a level-1 player, permanently. This is the only global power curve in the game, and it is fed exclusively by performing in matches.
+
+### 3.6 What no longer exists (removed from v0.1)
+
+| v0.1 mechanic | v0.2 replacement |
+|---|---|
+| `baseGain + scoreBonus × score` per drill | Fixed 50/100/150/200/250 XP tiers (§3.4) |
+| `headroom()` diminishing returns | The rising XP cost curve (§3.3) |
+| `fatigueMultiplier` on gain | Fatigue **lowers the performance score**, which drops the XP tier |
+| `coachBonus` on gain | Coach presence raises the performance ceiling (score clamp), not the XP |
+| Weekly drill multiplier 1.0/0.7/0.4/0.2 | 1.02× repeat bonus across days (§3.4) |
+
+Fatigue and coach presence still matter — they just act on **how well you perform**, which is more honest to a first-person game than a hidden multiplier on a number.
 
 ---
 
-## 5. Simulation systems
+## 4. Simulation systems
 
-### 5.1 Time & calendar
+### 4.1 Time, calendar and schedule (v0.2)
 
-**Proposal** (the original implies a clock via "sleep to skip the day" and "bladder appears at a certain hour" but never defines one).
+- 1 in-game day = 24 h. Default clock: 1 real second = 2 in-game minutes.
+- Time pauses in menus, dialogue, cutscenes, drill transitions and match stoppages.
+- **Schedule service** owns the week: 5–6 active days, each with a type (`Gym`, `Facility`, `Match`, `Off`).
+- **Off days:** a full-screen prompt offers *Skip to next active day* or *Go out*. If the player goes out, only the flat and market are accessible; every other door reads "Closed today".
+- **Active days:** the player may go straight to the session/match, or start the morning and roam the city first (shops, NPCs, dating).
+- **Skipping:** match days and training days can both be skipped from the schedule UI. Skipping a training day forfeits its 3 drill slots; skipping a match forfeits the rating, XP, bonus and reputation, and angers the coach.
 
-- One in-game day = 24 in-game hours.
-- Default clock speed: **1 real second = 2 in-game minutes** (a day ≈ 12 real minutes). Configurable 1×/2×/4× in Settings.
-- Time **pauses** during: menus, dialogues, cutscenes, minigames, interior transitions.
-- Time **does not pause** while the player stands still (prevents idling to farm needs).
-- Calendar: 7-day week, 30-match season, seasons are `[TBD]` in length.
-- Sleeping fast-forwards the clock — the only sanctioned time skip.
+### 4.2 Needs
 
-### 5.2 Needs
+Unchanged from v0.1: four needs, 0–100.
 
-**Source:** the note asks for an energy bar, a dirtiness bar, a toilet bar, and drunk state. **Proposal:** these are unified as four needs on a 0–100 scale.
-
-| Need | Range | Rises / falls | Effects at the bad end |
-|---|---|---|---|
-| **Energy** | 0 = collapse, 100 = fresh | −1.5/h awake, −18 per training drill, −25 per match | < 25: drills capped at 0.6 score. 0: forced sleep, lose the rest of the day. |
-| **Hygiene** | 0 = filthy, 100 = clean | −2/h, −12 per training, −20 per match | < 30: NPC dialogue changes, coach bonus lost, sleep restores 20% less. |
-| **Bladder** | 0 = empty, 100 = urgent | +6/h, +12 per drink, +20 per energy drink | At 100: forced 90-second "find a toilet" event. In public → reputation hit `[TBD]`. |
-| **Intoxication** | 0 = sober, 100 = wasted | +12 per drink, −8/h | > 60: screen sway, movement penalty, all scores ×0.6. 10 drinks in one session → news event (§5.7). |
-
-**Deliberate scope choice:** there is **no hunger bar**. Food exists to restore **Energy** (the original describes food as "extra energy"), which keeps the HUD to four bars and avoids a fifth system to balance. `D4` records the alternative.
-
-HUD: four thin bars in the lower-left, hidden when full and untouched for a while.
-
-### 5.3 Sleep and rest
-
-**Source:** *"Bed → skips the day and refills energy, or the sleep duration can be chosen and energy depends on the hour you slept. `E — SLEEP` / `G — REST`."*
-
-At the bed the prompt shows both verbs:
-
-| Input | Action | Behaviour |
+| Need | Decay / trigger | Bad-end effect |
 |---|---|---|
-| `E` | **Sleep** | Duration picker: 4 / 6 / 8 / 10 h. Fast-forwards the clock. Restores energy at 12.5/h × quality. |
-| `G` | **Rest** | 30 / 60 / 120 min nap. Restores 40% of the sleep rate, costs no "next day" state. |
+| **Energy** | −1.5/h, −18 per drill, −25 per match | < 25 caps drill performance; 0 = forced sleep |
+| **Hygiene** | −2/h, −12 per drill, −20 per match | < 30: coach bonus lost, NPC dialogue changes |
+| **Bladder** | +6/h, +12 per drink | 100 = forced toilet event |
+| **Intoxication** | +12 per drink, −8/h | > 60: sway, movement penalty, −40% performance; 10 drinks → news |
 
-**Sleep quality** (0.5–1.2 multiplier) = f(hygiene, intoxication, whether the player slept within ±1 h of the same time as yesterday). Sleeping at 04:00 before a 09:00 session is a real penalty — this is the system that teaches routine.
+### 4.3 Sleep, food, cooking, spoilage
 
-**Proposal:** sleeping past 10:00 on a training day triggers a missed-session notice from the coach and a small reputation hit.
+Unchanged from v0.1:
 
-### 5.4 Food, cooking and spoilage
+- Bed: `E` Sleep (4/6/8/10 h) or `G` Rest (30/60/120 min). Sleep quality 0.5–1.2 from hygiene, intoxication and routine consistency.
+- Storage halts spoilage ("like a chest"). Ingredients spoil over 3 days, cooked meals over 1.
+- Stove: 1–3 ingredients + 30 min → meal. Kelle paça = 1.3× a standard meal plus a strength buff (`D2`).
 
-**Source:** three separate ideas — a **wardrobe/dolap** that stores energy drinks, food and ingredients and "prevents spoilage like a chest"; a **stove** that cooks ingredients into higher-energy meals (*"Kelle Paça: 130% energy"*); and a market to buy the ingredients.
+### 4.4 Economy
 
-**Proposal — the item pipeline:**
+Base loop unchanged (wages, rent, groceries, bar, cars), extended in v0.2 with **contracts and market value**:
 
-```
-market purchase ──► inventory (decays, spoils) ──► storage (dolap/fridge, frozen decay)
-                                                         │
-                                                    stove ──► cooked meal ──► energy + buff
-```
+| Item | Value |
+|---|---|
+| Starting balance | 3 000 |
+| First contract wage | 2 500 / week (club tier 3) |
+| Appearance fee | 1 500 / match played ≥ 45 min |
+| Win bonus | 2 000 |
+| Goal bonus | 500 / goal, 250 / assist |
+| Rent cheap/mid/expensive | 400 / 900 / 2 000 per week |
+| Transfer fee | paid by the club, not the player — it moves the player, not the wallet |
 
-| Item class | Spoils? | Decay | Notes |
-|---|---|---|---|
-| Ingredients (raw) | Yes | 100 → 0 over 3 in-game days | Bread, meat, vegetables, offal |
-| Cooked meals | Yes, faster | 100 → 0 over 1 day | Cannot be eaten below 20 freshness |
-| Energy drinks / canned | No | — | Cheap, instant, small energy, adds bladder |
-| Alcohol | No | — | See bar (§6.2) |
+Bankruptcy (< −5 000) evicts to the cheap flat, as in v0.1.
 
-Storage in the flat **halts decay** while stored (the "chest" behaviour from the source). Cooking consumes 1–3 ingredients and 30 in-game minutes.
+### 4.5 Matches — first person, playable (v0.2, replaced)
 
-**Meal examples** (`[TBD]` values):
+**Source:** *"the match is played from the character's perspective… WASD and shift are used, like FC 27's open-world mode… shift+shift knocks the ball on and runs, space controls a high ball, ctrl slides, shift sprints… combos for skill moves, e.g. S+D → A+W to drag it right and go past on the left. Shooting and crossing: mouse aim, right click passes, left click shoots."*
 
-| Meal | Ingredients | Energy | Buff | Cost |
-|---|---|---:|---|---:|
-| Toast | Bread ×1 | +12 | — | 15 |
-| Pasta | Pasta ×1, Sauce ×1 | +28 | — | 40 |
-| **Kelle Paça** (source example) | Offal ×1, Broth ×1, Bread ×1 | **+45 (≈130% of a standard meal)** | +10% strength gain for 2 h | 120 |
-| Recovery shake | Powder ×1, Milk ×1 | +18 | −40 fatigue for next drill | 70 |
+#### Format
 
-> Source note: the original wrote "Kelle Paça: 130% energy". Read literally as a fraction of a full bar that would be broken (100 is the cap), so it is interpreted here as **130% of a standard meal's energy value**, plus a buff. Confirm in `D2`.
+| Item | Value |
+|---|---|
+| Teams | 11 v 11 |
+| Length | 2 × 6 min real time `[TBD]` |
+| Camera | First person, eye height 1.65 m, 90° FOV |
+| Control | One player; the other 21 are AI |
+| Difficulty | Amateur / Pro / Elite (affects AI reaction time and error) |
 
-### 5.5 Economy
+#### Controls (on-pitch)
 
-**Proposal** — the source has prices, wages and purchases but no ledger. Currency symbol is display-only (€ by default, localisable).
+| Input | Action |
+|---|---|
+| `W A S D` | Move |
+| Mouse | Look / aim |
+| `Shift` (hold) | Sprint |
+| `Shift` `Shift` (double-tap) | **Knock the ball ahead and run** — push the ball 4–8 m and accelerate |
+| `Space` | **Aerial control** — bring a high ball down; timed correctly it kills the ball, badly it bounces away |
+| `Ctrl` | **Slide tackle** |
+| `S+D` → `A+W` and similar | **Skill-move combos** — buffered direction sequences that produce a feint (inside-out, drag-back, step-over) |
+| **Left mouse** | **Shoot** — hold for power, mouse steers placement |
+| **Right mouse** | **Pass** — hold for weight; context-sensitive (through ball when aiming beyond a defender) |
 
-**Income**
+Skill-move combos are matched against a data table of input sequences, so new moves are data, not code.
 
-| Source | Amount (per week) | Condition |
-|---|---:|---|
-| Base wage | 2 500 | Set by club tier; rises with reputation |
-| Appearance fee | 1 500 / match | Played ≥ 45 min |
-| Win bonus | 2 000 / match | Team won |
-| Goal bonus | 500 / goal | — |
-| Man of the Match | 1 000 | Rating ≥ 8.5 |
+#### Match rating (v0.2)
 
-**Outgoings**
+**Source:** *"starts at 6.5; bad play or losing the ball lowers it; goals and assists and good play raise it."*
 
-| Source | Amount |
+Every player starts at **6.5**. Events adjust it live:
+
+| Event | Δ rating |
 |---|---:|
-| Rent — cheap / mid / expensive flat | 400 / 900 / 2 000 per week |
-| Groceries | 30–120 per trip |
-| Bar | 60 per drink, 200 per round |
-| Gym membership | 150 / week (facility drills are free) |
-| Car upkeep | 80 / week + fuel |
-| Club fines | 500 (late), 2 000 (missed session) |
+| Goal | +0.90 |
+| Assist | +0.60 |
+| Key pass | +0.15 |
+| Shot on target | +0.08 |
+| Successful dribble | +0.05 |
+| Tackle / interception won | +0.10 |
+| Possession lost | −0.12 |
+| Failed pass in own third | −0.08 |
+| Clear chance missed | −0.30 |
+| Foul conceded | −0.10 |
+| Yellow / red card | −0.25 / −0.90 |
+| Own goal | −0.90 |
 
-**Proposal:** the player starts with **3 000** and one week of rent prepaid. Going negative triggers a bank notice and, at −5 000, eviction to the cheap flat. This gives money a failure state without a game-over screen.
+Clamped 3.0–10.0 and displayed live in the corner so the player can feel the match "grading" them. Final rating drives career XP (§3.5), relationships (§4.7) and the news (§4.6).
 
-### 5.6 Matches and career
+#### Match outcomes and the world
 
-**Source:** matches exist only as a source of training/performance news (*"outstanding performance in today's match"*), plus a hint that matches raise hygiene and cost energy.
+- Result affects the table, the coach relationship and the news.
+- A rating ≥ 8.5 triggers a "man of the match" news line and a reputation jump.
+- A rating ≤ 4.5 triggers criticism and a coach relationship drop.
+- Missed matches (skipped or injured) reduce the coach relationship.
 
-**This is the single largest scope risk in the project** (`D1`). Three options:
+### 4.6 Media
 
-| Option | Description | Cost | Risk |
-|---|---|---|---|
-| **A. Full match sim** | 11v11 real-time football with player control | 6+ months alone | Kills the project |
-| **B. Moment-based hybrid** (recommended) | Match is simulated as a timeline of ~8–12 **key moments**. The camera cuts to the player; you get one action per moment (finish, pass, tackle, header) using the drill mechanics you already learned. Everything else is resolved by the sim. | 4–6 weeks | Medium |
-| **C. Text sim only** | Result and rating computed from attributes + form; no match gameplay | 1 week | Low, but the game has no "football" in it |
+Unchanged mechanically: tagged `NewsEvent`s → `NewsComposer` → TV at 21:00, newspaper, phone feed. v0.2 adds tags:
 
-**Recommendation: B.** It reuses the 13 drill mechanics (a one-on-one is literally the Finishing drill), it keeps the game about the body you built, and it fits a 20-minute session. The roadmap is built on B.
+| Tag | Trigger |
+|---|---|
+| `transfer.offer` | A club bids for you |
+| `transfer.accepted` / `transfer.rejected` | Move completed / your approach was refused |
+| `relationship.fans` | Fan relationship crosses a threshold |
+| `match.rating.high` / `.low` | Rating ≥ 8.0 / ≤ 4.0 |
+| `bar.binge` | 10 drinks in a session |
+| `club.missed` | Skipped a session or match |
 
-Match rating (1.0–10.0) is derived from moment outcomes weighted by position, and feeds reputation, news and selection.
+### 4.7 Relationships (v0.2)
 
-### 5.7 Media, news and reputation
+**Source:** rejecting the player's own transfer approach must have *"a negative consequence: the relationship with the fans drops and the relationship with the coach drops"*. The source also asks for NPC conversation and *"getting a girlfriend"*.
 
-**Source:** *"Couch and TV → you can sit. The TV can run news about what you did that day, e.g. 'great performance in the match: (Player name) put in an outstanding performance in today's match'."* Plus the bar rule: **10 drinks → appears in the TV news.**
+| Relationship | Range | Start | Raised by | Lowered by | Effect |
+|---|---|---|---|---|---|
+| **Fans** | 0–100 | 30 | Goals, great ratings, trophies, loyalty | Transfer flirtation, scandals, poor form | News tone, home atmosphere, shirt sales income, transfer welcome |
+| **Coach** | 0–100 | 50 | Training attendance, high ratings, fulfilling the coach's drill request | Skipping sessions, bad matches, rejected transfers | Selection probability, position in the team, drill bonus |
+| **Board** | 0–100 | 50 | League position, market value growth | Wage demands, fan unrest | Transfer budget, patience, contract renewals |
+| **Girlfriend** | 0–100 | — (optional) | Talking, gifts, dates | Neglect, public scandals | Energy/morale recovery bonus, a news line, a life outside football |
 
-**Proposal — a templated news generator.** Any notable event writes a `NewsEvent` (tag, severity, subject, optional number). At 21:00 the TV composes a bulletin from the day's events, highest severity first:
+The three club relationships are **Must**. The girlfriend system is **Should** (minimal: 3 dateable NPCs, 5 stages, talk/gift/date actions); see `D14`.
 
-| Tag | Trigger | Headline example |
+### 4.8 Transfers, leagues and countries (v0.2)
+
+**Source:** *"a realistic transfer policy and countries; changing country changes the map; the top 10 active football leagues; contracts, wages, market value from goals, assists and match ratings…"*
+
+#### Leagues and countries
+
+| Tier | Leagues | Country kit |
 |---|---|---|
-| `match.rating.high` | Rating ≥ 8.0 | *"<Name> put in an outstanding performance in today's match."* |
-| `match.rating.low` | Rating ≤ 4.0 | *"<Name> struggled as <Club> fell short."* |
-| `bar.binge` | 10 drinks in one session | *"<Name> spotted leaving <Bar> at 3 a.m."* |
-| `club.missed` | Missed a mandatory session | *"Discipline questions at <Club> after <Name> no-show."* |
-| `purchase.car` | Bought a car | *"<Name> arrives in style — a new <Car>."* |
-| `training.milestone` | Attribute crosses 80 | *"<Name>'s <attribute> is drawing attention."* |
+| 1 | England, Spain, Italy, Germany, France | EN, ES, IT, DE |
+| 2 | Portugal, Netherlands, Turkey | PT, NL, TR |
+| 3 | Brazil, USA | BR, US |
 
-The same bulletin appears as a **newspaper** on the coffee table and as a short **phone feed**, so the player cannot miss it. Reputation (0–100) shifts by severity; reputation gates club offers, car financing and bar treatment.
+Ten leagues as **data** is cheap. Ten *cities* is not — v1.0 ships **4 country city kits** (TR, EN, ES, DE) and re-skins the remaining six with palette, signage and skyline dressing (`D13`).
 
-**Why this matters technically:** it is the cheapest system with the highest "the world noticed me" payoff, and it is fully data-driven — see `ARCHITECTURE.md` §6.7.
+#### Market value
 
-### 5.8 Reputation (proposal, minimal)
+```
+marketValue = base(overall) × ageFactor × formFactor × leagueFactor
+base(overall)   = 1 000 × 1.12^(overall − 50)
+ageFactor       = ≤21: 1.30 | 22–25: 1.15 | 26–28: 1.00 | 29–31: 0.75 | 32–34: 0.50 | 35+: 0.25
+formFactor      = clamp(0.5, 1.4, 0.8 + 0.3 × (avgRating − 6.5))
+leagueFactor    = tier1: 1.00 | tier2: 0.60 | tier3: 0.35
+```
 
-One number, 0–100, starting at 20. Rises with ratings and milestones, falls with scandals. Effects: wage negotiation, news tone, NPC greeting lines, and (v1.1) sponsorship offers. No separate fame/fan/agent simulation in v1.0 — `D7`.
+A 24-year-old, 78-overall, 7.2-average player in a tier-1 league: 1 000 × 1.12^28 ≈ 22 000 → ×1.15 ×1.01 ×1.00 ≈ **25 600** (thousands). Wages follow the value, roughly `value / 500` per week.
+
+#### The two-way transfer system
+
+| Path | Flow |
+|---|---|
+| **Club offers you** | Offer arrives → negotiate wage (each demand lowers their acceptance) → accept / decline → if accepted, move; if refused, you may accept their original terms or stay |
+| **You offer yourself** | Pick a club → set wage demand → **wheel spin** shows acceptance % → accepted = move; refused = stay, **fans −8, coach −5, reputation −3** |
+
+**Acceptance probability** (shown to the player before the spin, per the source's "the player can see whether it came or not"):
+
+```
+fit        = clamp(0.2, 1.5, marketValue / clubExpectedValue)
+wageFactor = clamp(0.10, 1.10, 1 − 0.5 × (demandedWage − expectedWage) / expectedWage)
+p          = clamp(0.05, 0.90, 0.55 × fit × wageFactor × reputationFactor)
+```
+
+The wheel is a pure visualisation of `p` — the RNG is rolled first, the wheel animates to the result. Never the reverse: an animation-driven RNG is untestable and feels cheatable.
+
+#### Contract content
+
+Wage, length (1–4 years), signing bonus, goal/assist bonuses, release clause (v1.1). Contract expiry forces a renewal negotiation or free agency — a second, gentler transfer path.
 
 ---
 
-## 6. World and locations
+## 5. World and locations
 
-### 6.1 City
+### 5.1 Cities and access (v0.2)
 
-**Proposal:** one compact district (≈ 200 × 200 m) with six destinations inside a 2-minute walk of the flat, plus a bus stop that acts as a fast-travel node. Scale is deliberately small: it keeps the art budget sane and makes the "commute" a real but non-punishing cost.
+- **Everything is 3D and first-person** — city, interiors, gym, facility, stadium. No 2D screens except menus, the wheel and station minigames.
+- One district per city (≈ 200 × 200 m): flat, facility, gym, market, bar, gallery, stadium, plaza with bus stop.
+- **Access rules per day type** (§4.1): active days = all buildings; off days = flat + market only.
+- Changing country loads a different city kit and club set.
 
 ```
         ┌──────────────────────────────┐
-        │            STADIUM           │  ← match days only (v1.0 exterior + tunnel)
+        │           STADIUM            │  match days
         └──────────────┬───────────────┘
                        │
   ┌────────┐    ┌──────┴──────┐    ┌────────┐
@@ -355,351 +502,284 @@ One number, 0–100, starting at 20. Rises with ratings and milestones, falls wi
                 │  FACILITY   │
                 └──────┬──────┘
                   ┌────┴─────┐
-                  │  FLATS   │  ← cheap / mid / expensive, one entrance each
+                  │  FLATS   │
                   └──────────┘
 ```
 
-Loading: each interior is its own scene, loaded additively behind a fade through a door trigger. No open-world streaming in v1.0 (`ARCHITECTURE.md` §7.2).
+### 5.2 Building interaction inventory
 
-### 6.2 Building and interaction inventory
+Unchanged in structure from v0.1, with the v0.2 3D requirement applied:
 
-#### Flat (three tiers)
-
-**Source:** *"three houses — cheap / mid / expensive — differing only in design, shape and size."* Confirmed: **no gameplay difference in v1.0**; the expensive flat is a status purchase and news trigger. `D10` records the option to add a home gym or balcony later.
-
-| Object | Interaction | Source |
+| Building | Objects | Notes |
 |---|---|---|
-| **Bed** | `E` Sleep (duration picker) / `G` Rest | ✔ |
-| **Storage (dolap)** | Open inventory; food stored here does not spoil | ✔ |
-| **Stove** | Cook from ingredients; 30 min | ✔ |
-| **Shower** | Cleans hygiene; 15 min; blocked while the bladder need is 100 | ✔ |
-| **Toilet** | Empties bladder; 5 min | ✔ |
-| **Couch + TV** | Sit; 21:00 bulletin, or a channel menu (news / highlights / off) | ✔ |
-| Mirror | Change appearance (cosmetic, v1.1) | Proposal |
-| Wardrobe | Change kit / outfit (cosmetic, v1.1) | Proposal |
+| **Flat** ×3 tiers | Bed (`E` sleep / `G` rest), storage, stove, shower, toilet, couch + TV | Same as v0.1; all physically modelled |
+| **Market** | Stocked shelves (non-interactive), cashier trade panel | Buy ingredients, drinks, gifts |
+| **Bar** | Stools, bartender, drinks, patrons | 10 drinks → news |
+| **Gallery** | Cars, salesman, handshake cutscene | Purchase → travel-time effect |
+| **Facility** | Coach, teammates, 7 **3D drill stations**, physio (v1.1) | Drills are played on the pitch |
+| **Gym** | 6 **station minigames**, lockers, ambient lifters | Entered by walking to the machine |
+| **Stadium** | Tunnel, pitch, 22 players, crowd (audio + impostors) | Match day only |
 
-#### Market
-
-| Object | Interaction | Source |
-|---|---|---|
-| **Shelves** | **Non-interactive but visibly stocked** — pure set dressing | ✔ |
-| **Cashier (NPC)** | Trade panel: buy/sell, item grid, prices, quantity — explicitly modelled on Minecraft villager trading | ✔ |
-| Fridge section | Rotating stock, seasonal items | Proposal |
-
-#### Bar
-
-| Object | Interaction | Source |
-|---|---|---|
-| **Bar stools** | Sittable | ✔ |
-| **Bartender (NPC)** | Buy drinks; dialogue reacts to intoxication and reputation | ✔ |
-| **Drinks** | Raise intoxication, lower energy; 10 in one session → news event | ✔ |
-| Other patrons (NPCs) | Ambient chatter, occasional rumour that reveals a training tip | Proposal |
-| Dartboard / pool table | Time-waster that raises a small social stat `D7` | Proposal, cuttable |
-
-#### Gallery (car dealership)
-
-| Object | Interaction | Source |
-|---|---|---|
-| **Cars** | Inspect → purchase → **handshake cutscene** | ✔ |
-| **Salesman (NPC)** | Buy directly from the NPC instead of the car → same cutscene | ✔ |
-| Test drive | Short scripted drive, raises the shop's price tolerance | Proposal, cuttable |
-
-#### Training facility
-
-| Object | Interaction | Source |
-|---|---|---|
-| **Head coach (NPC)** | Dialogue → choose today's training programme → opens the drill selector | ✔ |
-| **Teammates (NPCs)** | Idle chatter, rivalry lines, hints about the next opponent | ✔ (listed, undefined) |
-| 7 drill stations | Launch the technical drills (§9) | ✔ |
-| Physio room | Heal injury / clear fatigue (v1.1) | Proposal |
-
-#### Gym
-
-**Source:** *"Interior design [TBD] — let's save this for later; first let's add the player overall system."*
-
-**Honoured literally.** The gym exists in the city from M3 but its interior is a **grey-box shell** until M4 is complete. The six physical drills are trainable at the facility's gym corner first; the full gym interior, machines and ambient NPCs are a **v1.1** content drop. Movement is never blocked by this — the drills are playable from day one.
-
-#### Stadium
-
-Exterior and tunnel exist in M6 so match days have a destination. No crowd simulation in v1.0.
+**Gym note:** the source still says "save the gym for later, first add the overall system". v0.2 keeps the gym's *interior art* as the last content drop, but the six physical drills must exist from M4 because the weekly schedule depends on gym sessions.
 
 ---
 
-## 7. Controls and interaction
+## 6. Controls and interaction
 
-### 7.1 Input map (default, fully rebindable)
+### 6.1 On foot
 
 | Action | Keyboard / Mouse | Gamepad |
 |---|---|---|
 | Move | `W A S D` | Left stick |
 | Look | Mouse | Right stick |
-| Sprint | `Shift` (hold) | Left stick click |
-| Interact / Confirm | `E` | `A` / Cross |
-| Secondary interact | `G` | `X` / Square |
-| Cancel / Back | `Esc` | `B` / Circle |
-| Pause | `Esc` | `Start` |
-| Journal / Phone | `Tab` | `D-pad up` |
-| Map | `M` | `D-pad down` |
-| Quick save / load (dev builds only) | `F5` / `F9` | — |
+| Sprint | `Shift` | L3 |
+| Interact | `E` | A / Cross |
+| Secondary interact | `G` | X / Square |
+| Pause | `Esc` | Start |
+| Schedule / phone | `Tab` | D-pad up |
+| Map | `M` | D-pad down |
 
-**Source:** the original specifies `E — SLEEP` and `G — REST` on the bed. That maps cleanly onto the global "primary / secondary interact" pair above, so the bed is not a special case.
+### 6.2 On the pitch
 
-### 7.2 Interaction UX
+The source's control scheme, formalised in §4.5: `WASD` + mouse, `Shift` sprint, double-tap `Shift` knock-on, `Space` aerial control, `Ctrl` slide, LMB shoot, RMB pass, buffered direction combos for skill moves.
 
-- Crosshair dot; when an interactable is within 2.5 m and in a 45° cone it expands and a prompt card fades in: `[E] Sleep  [G] Rest` under the object name.
-- Objects with unmet requirements show the requirement instead of the verb (`[E] Locked — needs 3 000`).
-- One interactable wins per frame, chosen by dot-product × inverse distance. No precision aiming required.
-- All prompts are localised strings from a table, never hard-coded (`GDD` §12).
+### 6.3 Interaction UX
 
-### 7.3 Player control states
-
-`FreeRoam → Interacting → Dialogue → Minigame → Cutscene`, driven by an explicit state machine. Only `FreeRoam` consumes movement input and advances the clock; every other state pauses time. See `ARCHITECTURE.md` §7.1.
+Unchanged: crosshair, 2.5 m / 45° cone, prompt card with the verb, locked objects show their requirement.
 
 ---
 
-## 8. UI / UX
+## 7. UI / UX
 
-### 8.1 Flow
+### 7.1 Main menu (Stage 1)
 
-```
-BOOT
- └─► Main Menu ──────────────────────────────────────────────┐
-      ├─ New Career ─► modal (career name, position, club)     │
-      │                 └─ Confirm ─► intro ─► flat (spawn)    │
-      ├─ Continue ─► load most recent save ────────────────────┤
-      ├─ Load Game ─► slot list (3 slots + autosave)            │
-      ├─ Settings ─► Gameplay / Audio / Video / Controls        │
-      └─ Quit ─► confirm dialog                                │
-```
+Unchanged from v0.1: cinematic title screen → New Career / Continue / Load / Settings / Quit. New Career opens the **naming modal** (career name, position, club), Confirm/Cancel, then spawns into the flat. Settings holds the **controls tab** with rebinding.
 
-### 8.2 Main menu (Stage 1)
+### 7.2 HUD
 
-**Source:** *"a nice intro screen; then key settings; an Exit tab; a New Game tab → pressing it opens a box where you name your career and confirm; after confirming, you spawn into the game."*
-
-Polished interpretation:
-
-- Cinematic background (slow camera over the stadium at dusk) with a vertical menu: **New Career / Continue / Load / Settings / Quit**.
-- **New Career modal**: centred card, title "Name your career", a text field (3–24 chars, validated), a position picker, a club picker (3 starter clubs), and **Confirm / Cancel** buttons. Confirm is disabled until the name is valid. This is the *only* modal in the main menu — everything else is a full screen.
-- **Settings → Controls** is the "key settings tab": a rebinding table with conflict detection, reset-to-default, and a gamepad/keyboard toggle. Rebinds persist to disk independently of saves.
-- **Quit** asks for confirmation only if a career is loaded.
-
-### 8.3 HUD
-
-| Element | Placement | Visibility |
+| Element | Placement | When |
 |---|---|---|
-| Needs bars (4) | Lower left | Fade out when full and idle 5 s |
-| Clock + day | Upper right | Always |
-| Money | Upper right, under clock | On change, then fades |
-| Prompt card | Centre, below crosshair | On focus |
-| Objective ("Be at the facility by 09:00") | Upper left | Until complete |
-| Attribute toast ("Finishing +1") | Right, stacking | 3 s |
+| Needs bars (4) | Lower left | Fade when full |
+| Clock, day, day type | Upper right | Always |
+| Money | Under clock | On change |
+| **Attribute XP bar** (current drill's attribute) | Bottom centre during sessions | Session only |
+| **Career XP / level** | Character screen + post-match | On change |
+| **Match rating** | Upper right during matches | Match only |
+| **Score + clock** | Upper centre | Match only |
+| Prompt card | Centre | On focus |
 
-No minimap on the HUD in v1.0 — the map is a `M` overlay. Keeps the screen clean and the city learnable.
+### 7.3 New screens (v0.2)
 
-### 8.4 Settings
-
-Gameplay (clock speed, difficulty, subtitles), Audio (master/music/SFX/voice), Video (resolution, quality preset, FOV, motion blur), Controls (rebind, sensitivity, invert Y). Accessibility minimum for v1.0: subtitles, FOV, sensitivity, colour-blind-safe need colours, unskippable-cutscene toggle.
-
----
-
-## 9. Training minigames (Stage 5)
-
-**Source:** Stage 5 is titled "MINI GAME" and left **empty**. Stage 4 names 13 drills but specifies none of them. This section defines the framework and all 13.
-
-### 9.1 Shared framework
-
-Every drill is a self-contained scene implementing one contract and returning one result:
-
-```
-DrillContext  (difficulty, player attributes relevant to the drill, energy, fatigue, coach present, seed)
-DrillResult   (score 0..1, reps, durationSeconds, failureReason?)
-```
-
-Rules that apply to all 13:
-
-- **Duration:** 45–90 s of play, plus a 3-2-1 countdown.
-- **Input:** must work on both keyboard/mouse and gamepad.
-- **Readable feedback:** a live score meter, a visible "perfect" band, and an end card showing the converted attribute gain.
-- **Determinism:** seeded RNG, so the same seed and inputs reproduce the same result (needed for tests and replays).
-- **Attribute influence:** the player's current attribute sets the difficulty floor — a high Finishing attribute widens the target window, it does not auto-win the drill.
-- **Skippable:** a "skip drill" option exists for accessibility and awards a floor score of 0.2.
-- **No fail-out:** a bad drill ends normally with a low score; it never ejects the player.
-
-### 9.2 Technical drills (facility)
-
-| # | Drill | Attribute | Core mechanic | Score is | Source hint |
-|---|---|---|---|---|---|
-| T1 | **One-on-One** | Finishing | Ball rolls to you at the edge of the box; a keeper closes the angle. Aim with the mouse, charge power, release. Targets: 6 shots. | Goals × placement bonus | "close-range shot" |
-| T2 | **Cone Slalom** | Dribbling | Steer the ball through 8 gates with a "close control" radius; touching a cone costs time. | Time vs par, gates hit | "obstacle course" |
-| T3 | **Cross & Header** | Heading | Three crosses arrive at set intervals; position with `WASD`, time the jump, steer the header into a 3-zone goal. | Target zone accuracy | "head it in from the cross" |
-| T4 | **Cross Fire** | Crossing | From the wing, deliver 5 crosses into moving target zones; hold to charge, mouse to aim curl. | Zone hit rate | "you get the idea" |
-| T5 | **Rondo** | Passing | Wall passes with two teammates; a moving gate shows the pass window. Wrong-weight passes are intercepted. | Completed passes / 12 | "passing back and forth" |
-| T6 | **Shield & Steal** | Tackling | An opponent shields the ball with his back to you. Read his lean, press at the right moment; too early = foul. | Clean steals − fouls | "take the ball off a player with his back turned" |
-| T7 | **Top Corner** | Long shots | 25–30 m out, wind and swerve, keeper dives. 5 shots. | Goals × distance bonus | "long shot" |
-
-### 9.3 Physical drills (gym corner at the facility in v1.0, full gym in v1.1)
-
-| # | Drill | Attribute | Core mechanic | Score is | Source hint |
-|---|---|---|---|---|---|
-| P1 | **Treadmill Intervals** | Sprint speed | Hit a cadence with alternating input at rising speed; miss three beats and the belt slows. | Peak speed reached | "treadmill → max speed" |
-| P2 | **Endurance Run** | Stamina | Keep a marker inside a drifting "zone" for 60 s; the zone narrows as fatigue rises. | Time in zone | "treadmill" |
-| P3 | **Bar Holds** | Balance | Hold the pull-up bar in a balance window against a wobble simulation; grip meter drains. | Seconds held | "pull-up bar" |
-| P4 | **Dumbbell Circuit** | Strength | Rep timing against a form meter; too fast breaks form, too slow wastes the set. | Clean reps × form | "dumbbell" |
-| P5 | **Jump Squad** | Jumping | Rhythm-based vertical jump; time the launch on the beat and land in the green. | Best jump height | "Jump Squad" |
-| P6 | **Sled Push** | Acceleration | From a standing start, mash/rhythm to accelerate a weighted sled over 10 m; measure 0→10 m time. | Time to 10 m | "weight push → time to max speed" |
-
-> **Note on the source:** "UZAKTAN ŞUT (JUMP SQUAD)" and "ZIPLAMA (JUMP SQUAD)" name the same module twice. Interpreted here as: *Jump Squad* is the jumping minigame; the long-shot drill reuses its **timing ring** UI but is a shooting drill. If the author meant a single combined drill, only T7 changes — `D11`.
-
-### 9.4 Difficulty and variety
-
-**Proposal.** Each drill has 3 difficulty tiers (Amateur / Pro / Elite), unlocked by attribute thresholds (40 / 60 / 75). Higher tiers raise `baseGain` by 20% and 40%. A weekly rotating "coach's focus" gives one drill a ×1.25 bonus — this is what nudges the player to vary training without a nagging UI.
+| Screen | Purpose |
+|---|---|
+| **Schedule** | The week's 5–6 active days, drill slots used, skip buttons |
+| **Character** | 13 attributes, overall, level, career XP, relationships |
+| **Transfer hub** | Offers received, clubs to approach, wage slider, acceptance % |
+| **Wheel** | Full-screen spin animation with the odds visible |
+| **Relationships** | Fans / coach / board / girlfriend with recent causes |
+| **Post-match** | Rating breakdown, career XP earned, level progress |
 
 ---
 
-## 10. Content tables (first pass)
+## 8. Training content (Stage 4–5, rewritten for 3D)
 
-### 10.1 Drinks (bar)
+### 8.1 Two kinds of training
 
-| Drink | Price | Intoxication | Energy | Notes |
-|---|---:|---:|---:|---|
-| Beer | 60 | +12 | −4 | Default |
-| Raki | 90 | +20 | −8 | Stronger; local flavour |
-| Wine | 80 | +15 | −3 | — |
-| Soft drink | 25 | 0 | +6 | The sober option |
-| Water | 10 | 0 | +2 | — |
+| Type | Where | Presentation | Drills |
+|---|---|---|---|
+| **Technical** | Facility pitch | Full 3D, first person, ball physics | 7 |
+| **Physical** | Gym stations | First-person camera locked to the machine + station minigame overlay | 6 |
 
-**Rule from source:** 10 drinks in one session → `bar.binge` news event. Intoxication caps at 100; at 100 the player passes out and wakes at home at 12:00 with 30 energy.
+Both award the same five XP tiers (§3.4). A session = 3 slots, chosen from the coach's menu (facility) or the machine itself (gym).
 
-### 10.2 Cars (gallery)
+### 8.2 Technical drills — 3D at the facility
 
-| Car | Price | Upkeep/wk | Effect |
-|---|---:|---:|---|
-| Second-hand hatchback | 8 000 | 80 | Travel time −40% |
-| Saloon | 24 000 | 120 | Travel time −50%, small reputation gain |
-| Sports coupé | 75 000 | 300 | Travel time −60%, reputation +5, `purchase.car` news |
-| Supercar | 150 000 | 600 | Travel time −60%, reputation +10, guaranteed news |
+| # | Drill | Attribute | What the player physically does | Score |
+|---|---|---|---|---|
+| T1 | **One-on-One** | Finishing | Receive at the edge of the box, beat the closing keeper, shoot | Goals × placement |
+| T2 | **Cone Slalom** | Dribbling | Dribble through 8 gates, close control, cones cost time | Time vs par |
+| T3 | **Cross & Header** | Heading | Three crosses, position, jump, head into a zone | Zone accuracy |
+| T4 | **Cross Fire** | Crossing | Five deliveries from the wing into moving zones | Zone hit rate |
+| T5 | **Rondo** | Passing | Wall passes through a moving gate; weight matters | Completed / 12 |
+| T6 | **Shield & Steal** | Tackling | Read the shield, time the challenge, avoid the foul | Steals − fouls |
+| T7 | **Top Corner** | Long shots | 25–30 m, wind, swerve, keeper | Goals × distance |
 
-**Proposal:** cars exist to compress travel time — the actual gameplay payoff — plus status. No driving simulation beyond a simple vehicle controller on the city roads.
+Each technical drill **uses the same movement, ball and shooting systems as the match** (`ARCHITECTURE.md` §7). That is the core engineering bet of v0.2: one ball, one set of controls, two contexts.
 
-### 10.3 Flats
+### 8.3 Physical drills — gym stations
 
-| Tier | Rent/wk | Size | Contents |
-|---|---:|---|---|
-| Cheap | 400 | 1 room + bath | Bed, stove, small storage, no couch (TV on a crate) |
-| Mid | 900 | 1 bed + living room | Full set, couch, larger storage |
-| Expensive | 2 000 | 2 bed + balcony | Full set, balcony, larger storage, better sleep quality (+10%) |
+| # | Drill | Attribute | Mechanic | Score |
+|---|---|---|---|---|
+| P1 | **Treadmill Intervals** | Sprint speed | Cadence input at rising speed | Peak speed |
+| P2 | **Endurance Run** | Stamina | Keep a marker in a drifting zone for 60 s | Time in zone |
+| P3 | **Bar Holds** | Balance | Hold through a wobble sim; grip drains | Seconds |
+| P4 | **Dumbbell Circuit** | Strength | Rep timing against a form meter | Clean reps × form |
+| P5 | **Jump Squad** | Jumping | Rhythm jump, land in the green | Height |
+| P6 | **Sled Push** | Acceleration | Accelerate a weighted sled 10 m | Time |
 
----
+Station minigames are **UI overlays with a locked first-person camera**, not full-body animation — this is deliberate, and it is what keeps the gym shippable.
 
-## 11. Art, audio, tone
+### 8.4 Coach programme
 
-- **Art:** stylised semi-realistic (think *Two Point*/*Yakuza*-lite rather than photoreal). Modular kit-based interiors so six buildings share furniture; 3 flat variants reuse the same pieces at different quality tiers.
-- **Audio:** diegetic-first. TV murmur, bar ambience, boot studs on concrete, treadmill whine. Music only in menus and match moments.
-- **Tone:** grounded and slightly funny. The TV news is the comedic voice of the game; it should never mock the player cruelly.
-
----
-
-## 12. Localisation
-
-- Source language is Turkish; **English is the primary development language**, Turkish ships at launch.
-- All player-facing strings in a table keyed by ID (`ui.menu.new_career`), never literal.
-- Turkish needs ~30% more UI width — every layout is tested with a pseudo-locale.
-- Culture: Turkish-specific flavour (kelle paça, rakı) is a feature, not a translation problem. Keep it, gloss it once.
+The coach's dialogue sets the session's focus and grants a **performance ceiling bonus** (+5% max score) when the player trains the requested drill. The weekly "coach's focus" rotates and is visible on the schedule.
 
 ---
 
-## 13. Scope: what v1.0 is
+## 9. Content tables
+
+### 9.1 XP and level (v0.2)
+
+See §3.3–3.5. All values live in `Balance/attributes.csv` and `Balance/levels.csv`.
+
+### 9.2 Leagues
+
+| League | Tier | Country kit | Clubs (v1.0) |
+|---|---:|---|---:|
+| England | 1 | EN | 20 (data only) |
+| Spain | 1 | ES | 20 |
+| Italy | 1 | IT (reskin) | 20 |
+| Germany | 1 | DE | 18 |
+| France | 1 | FR (reskin) | 18 |
+| Portugal | 2 | PT (reskin) | 18 |
+| Netherlands | 2 | NL (reskin) | 18 |
+| Turkey | 2 | TR | 18 |
+| Brazil | 3 | BR (reskin) | 20 |
+| USA | 3 | US (reskin) | 20 |
+
+"Reskin" = same layout kit, different palette, signage, skyline and street props. Full bespoke cities for all ten are a v2.0 cost (`D13`).
+
+### 9.3 Drinks, cars, flats
+
+Unchanged from v0.1 (see v0.1 tables, retained in `Balance/*.csv`):
+
+| Drinks | Price | Intox | Energy |
+|---|---:|---:|---:|
+| Beer | 60 | +12 | −4 |
+| Rakı | 90 | +20 | −8 |
+| Wine | 80 | +15 | −3 |
+| Soft drink | 25 | 0 | +6 |
+| Water | 10 | 0 | +2 |
+
+Cars: hatchback 8 000 → supercar 150 000, travel-time reduction 40–60%. Flats: 400 / 900 / 2 000 per week.
+
+---
+
+## 10. Art, audio, tone
+
+- **Art:** stylised semi-realistic; modular kits for six building types; four city palettes at launch.
+- **Characters:** 22 on-pitch players per match is the single biggest art/animation cost. Use one base rig, six body variants, per-club kit textures, LOD to impostors beyond 40 m.
+- **Audio:** diegetic-first; crowd as an audio bed with three states (calm, tense, roaring); TV murmur; boot studs.
+- **Tone:** grounded, slightly funny; the TV is the comedic voice, never cruel.
+
+---
+
+## 11. Localisation
+
+English and Turkish at launch; all strings in tables; pseudo-locale layout test; Turkish needs ~30% more width.
+
+---
+
+## 12. What v1.0 is
 
 | Priority | Content |
 |---|---|
-| **Must** | Main menu + career creation; flat with 6 interactions; facility with coach + 7 drills; gym corner with 6 drills; market with cashier trading; bar with bartender and drinks; gallery with car purchase + cutscene; 13 attributes + overall; needs + clock + sleep; save/load; TV news; 1 season |
-| **Should** | Reputation, match-day moment gameplay, 3 flat tiers, car travel-time effect, newspapers, coach's weekly focus |
-| **Could** | Test drive, dartboard, physio, phone feed, appearance customisation |
-| **Won't (v1.0)** | Multiplayer, full 11v11 football, open world, GK career, transfers/agents, women's league, mod support, console ports, voice acting, injuries |
+| **Must** | Main menu + career creation; 3D city and 8 interiors; needs, sleep, food, hygiene; market, bar, gallery; 13 attributes with XP; 13 drills (7 3D + 6 station); player level; **playable first-person matches**; weekly schedule with 5–6 active days and skip; ratings and career XP; transfers with the wheel; fans/coach/board relationships; 10 leagues as data; 4 city kits; one full season; Steam build |
+| **Should** | Girlfriend system; media newspaper + phone; car travel effects; 3 flat tiers; coach's focus |
+| **Could** | Test drive, dartboard, physio, appearance customisation, second-season storylines |
+| **Won't (v1.0)** | Multiplayer, full 11v11 broadcast presentation, goalkeeper career, bespoke cities for all 10 leagues, women's league, agents, injuries, mod support, console |
 
-Everything in "Won't" is a deliberate cut to protect the roadmap, not a missing idea.
-
----
-
-## 14. Open decisions
-
-| ID | Decision | Recommendation |
-|---|---|---|
-| **D1** | Are matches playable? | **Option B, moment-based hybrid.** Full 11v11 is a different project. |
-| **D2** | Is "130% energy" a multiplier on a meal or on the bar? | Treat as **1.3× a standard meal**, plus a buff. |
-| **D3** | Can the player change position mid-career? | No in v1.0. Attributes still all trainable; only the overall weighting is fixed. |
-| **D4** | Separate hunger bar? | No. Fold food into Energy, as the source implies. |
-| **D5** | Goalkeeper career? | Out of scope; revisit only if v1.0 ships well. |
-| **D6** | Multi-season career in v1.0? | Ship season 1 + "continue" hook; full multi-season in v1.1. |
-| **D7** | Social/morale stat beyond reputation? | No. Reputation covers it. Cut dartboard/social if time is short. |
-| **D8** | Console ports? | PC/Steam first. Do not design UI around a controller-only layout that blocks a later port. |
-| **D9** | Shipping title | "FootbalSim" is a typo in the repo name. Working title: *FootbalSim*; candidate: **First XI** / **Kickstart** / **Sunday League**. Decide before store page. |
-| **D10** | Do flat tiers ever differ mechanically? | Only the +10% sleep quality on the expensive flat. No home gym. |
-| **D11** | Long shots vs Jump Squad | Two separate drills sharing one timing-ring component. |
+> **Scope reality check.** Playable first-person football is the most expensive item in this document by a wide margin — it is comparable to building a small football game on top of the life sim. It is achievable at an **arcade-authentic** level (solid movement, ball, dribbling, shooting, simplified team AI, one stadium per club) with a long milestone. It is **not** achievable at FC/FIFA fidelity by a small team. See `ROADMAP.md` §2 and `D15`.
 
 ---
 
-## 15. Glossary — Turkish source → English
+## 13. Open decisions
 
-| Turkish (source) | English used here | Note |
+| ID | Decision | Status / recommendation |
 |---|---|---|
-| Aşama | Stage / Milestone | 5 stages in the source |
-| Giriş ekranı | Main menu / title screen | Stage 1 |
-| Atarlar Sekmesi *(typo for Ayarlar)* | Settings tab | Includes key rebinding |
-| Yeni oyun sekmesi | New Career tab | Opens naming modal |
+| **D1** | Are matches playable? | **Resolved by v0.2: yes, first person.** |
+| **D2** | Is "130% energy" a multiplier on a meal or the bar? | 1.3× a standard meal + buff |
+| **D3** | Position change mid-career? | No in v1.0 |
+| **D4** | Separate hunger bar? | No — food restores Energy |
+| **D5** | Goalkeeper career? | Out of scope |
+| **D6** | Multi-season career in v1.0? | Yes — transfers require it. Minimum: seasons 1–3 |
+| **D7** | Social stat beyond relationships? | No; fans/coach/board/girlfriend cover it |
+| **D8** | Console ports? | PC/Steam first |
+| **D9** | Shipping title | Decide before the store page; "FootbalSim" is a repo typo |
+| **D10** | Flat tiers mechanically different? | Only +10% sleep quality on the expensive flat |
+| **D11** | Long shots vs Jump Squad | Separate drills sharing the timing-ring component |
+| **D12** | Weekly training volume: 4 sessions (2+2) or 2 total? | **4 sessions (2 gym + 2 facility)** — reconciles Stages 6 and 7. Halving it halves progression speed |
+| **D13** | Cities per country at launch | **4 kits** (TR, EN, ES, DE), six reskins; bespoke later |
+| **D14** | Girlfriend system depth | Minimal (3 NPCs, 5 stages) in v1.0; no dating sim |
+| **D15** | Match fidelity tier | **Arcade-authentic** (see roadmap §2). Full simulation is not v1.0 |
+| **D16** | Match length | 2 × 6 min real time |
+| **D17** | Does training grant career XP too? | **No** — career XP is match-only (per source) |
+| **D18** | Steam: Early Access or 1.0? | Recommend EA once the match + one season works (M7) |
+
+---
+
+## 14. Glossary — Turkish source → English
+
+| Turkish | English | Note |
+|---|---|---|
+| Aşama | Stage | 7 stages in v0.2 |
+| Giriş ekranı | Title screen | Stage 1 |
+| Atarlar *(Ayarlar)* | Settings | Typo in source |
 | Kariyeri adlandır | Name your career | 3–24 chars |
-| Spawn | Spawn | Spawn into the flat after intro |
-| Map / şehir | City map / district | 6 destinations |
-| Etkileşimli bina | Interactive building | Interiors are separate scenes |
-| GYM | Gym | v1.1 interior |
-| EV | Flat / house | Cheap / Mid / Expensive |
-| BAR | Bar | Drinks, bartender, stools |
-| MARKET | Market | Cashier NPC, shelves |
-| GALERİ | Car gallery / dealership | Purchase + handshake cutscene |
-| TESİS | Training facility | Coach, teammates, 7 drills |
-| Dolap | Storage / larder | "Chest" behaviour: stops spoilage |
-| Ocak | Stove | Cooking |
-| Duş | Shower | Hygiene |
-| Tuvalet | Toilet | Bladder |
-| Koltuk ve TV | Couch and TV | News bulletin |
+| Birinci bakış açısı | First-person | New in v0.2 |
+| Etkileşimli bina | Interactive building | — |
+| Tesis | Training facility | 3D drills |
+| GYM | Gym | Station minigames |
+| Antrenman | Training (session) | 3 slots |
+| Dolap | Storage | Stops spoilage |
+| Ocak | Stove | — |
+| Duş | Shower | — |
 | Kirlilik barı | Hygiene bar | Source says "dirtiness" |
-| Sarhoş | Drunk / intoxicated | Intoxication need |
-| Ara sahne | Cutscene | Handshake on car purchase |
-| Teknik Direktör | Head coach / manager | Chooses the training programme |
-| Takım arkadaşları | Teammates | Ambient NPCs |
-| Bitiş | Finish | — |
-| Bitiricilik | Finishing | T1 |
-| Dribling | Dribbling | T2 |
-| Kafa vuruşu | Heading | T3 |
-| Orta yapma | Crossing | T4 |
-| Pas | Passing | T5 |
-| Top kapma | Tackling | T6 |
-| Uzaktan şut | Long shots | T7 |
-| Hız | Sprint speed | P1 |
-| Dayanıklılık | Stamina | P2 |
-| Denge | Balance | P3 |
-| Güç | Strength | P4 |
-| Zıplama | Jumping | P5 |
-| Hızlanma | Acceleration | P6 |
-| E-UYU / G-DİNLEN | `E` — Sleep / `G` — Rest | Mapped to primary/secondary interact |
-| Kelle paça | Kelle paça (sheep's-head soup) | Untranslated on purpose; a real dish |
-| Mini game | Minigame | Stage 5 was empty; defined in §9 |
+| Kelle paça | Kelle paça | Untranslated dish |
+| Ara sahne | Cutscene | — |
+| Teknik Direktör | Head coach | Drill selection |
+| Bitiricilik | Finishing | — |
+| Dribling | Dribbling | — |
+| Kafa vuruşu | Heading | — |
+| Orta yapma / orta açma | Crossing | — |
+| Pas | Passing | — |
+| Top kapma | Tackling | — |
+| Uzaktan şut | Long shots | — |
+| Hız / Dayanıklılık / Denge / Güç / Zıplama / Hızlanma | Sprint speed / Stamina / Balance / Strength / Jumping / Acceleration | — |
+| Tecrübe (exp) | XP | New in v0.2 |
+| Seviye | Level | Career level |
+| Başarı oranı | Success tier | 50–250 XP |
+| Reyting | Match rating | Starts 6.5 |
+| Gol / Asist | Goal / Assist | — |
+| Top kaybı | Possession lost | Rating penalty |
+| Çalım | Skill move | Combo input |
+| Topu açarak koşma | Knock-on run | Double-tap Shift |
+| Kayma | Slide tackle | Ctrl |
+| Fikstür | Fixture list | Generated |
+| Piyasa değeri | Market value | — |
+| Sözleşme / Maaş | Contract / Wage | — |
+| Teklif | Offer | Transfer |
+| Çark çevirme | Wheel spin | Acceptance visual |
+| Kabul yüzdesi | Acceptance % | — |
+| Taraftar | Fans | Relationship |
+| Kız arkadaş | Girlfriend | Optional system |
+| Ülke / Lig | Country / League | Map changes |
+| Maç günü | Match day | — |
+| Günü sardırma | Day skip | Off days |
 
 ---
 
-## 16. What changed from the source, and why
+## 15. Changelog against the source
 
 | Source issue | Resolution |
 |---|---|
-| Stage 5 ("minigames") was an empty heading | Full 13-drill framework defined (§9) |
-| "Overall system" requested but never specified | Weighted-average formula + 4 position profiles (§4.2) |
-| No time system, but sleep skips days | Clock, calendar, configurable speed (§5.1) |
-| Needs implied (energy, dirt, bladder) but unscoped | Four needs, decay rates and failure states (§5.2) |
-| No economy ledger | Income/outgoings, starting money, bankruptcy branch (§5.5) |
-| Matches referenced but never designed | Three options; moment-based hybrid recommended (§5.6) |
-| "10 drinks → TV news" had no mechanism | Tagged news-event bus + bulletin composer (§5.7) |
-| Gym deferred by the author | Honoured: shell in M3, drills at facility, full gym in v1.1 (§6.2) |
-| Buildings listed without interactions | Per-object interaction inventory (§6.2) |
-| "Atarlar" (typo), inconsistent keybinds | Unified input map, primary/secondary interact (§7.1) |
-| No save system mentioned | 3 slots + autosave, versioned schema (`ARCHITECTURE.md` §8) |
-| No failure states anywhere | Collapse, eviction, scandals, missed-session fines (§5) |
+| Stage 2 said "map" with no dimension | Everything 3D, first person; city access rules by day type (§5.1) |
+| Stage 6 introduces full match gameplay | Designed as arcade-authentic 11v11 first person (§4.5) with a fidelity ladder (roadmap) |
+| Stage 6's XP thresholds and grades | Formal cost curve and five tiers (§3.3–3.4) |
+| Stage 6's level multiplier | Career XP curve and +4%/level cap (§3.5) |
+| Stage 6 "2 trainings/week" vs Stage 7 "4 sessions/week" | Resolved as 2 + 2 sessions (`D12`) |
+| Stage 7's 5–6 day week | Schedule service, off-day rules, skip UI (§4.1) |
+| Stage 7's transfers and countries | Two-way transfer system, market value, wheel (§4.8) |
+| Stage 7's girlfriend | Minimal relationship system (`D14`) |
+| Final line: publishable on Steam | Roadmap M9 + Steam checklist |
+| v0.1's moment-based match | Removed; replaced by playable matches |
+| v0.1's progress-point training formula | Removed; replaced by XP thresholds |

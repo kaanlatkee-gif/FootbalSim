@@ -1,430 +1,522 @@
 # FootbalSim — Technical Architecture
 
-**Target:** Unity 6 LTS (6000.x), C# 9 / .NET Standard 2.1
-**Companion documents:** `GDD.md` (design), `ROADMAP.md` (schedule)
-**Status:** Proposed for M0 review
+**Version:** 0.2 (matches GDD v0.2)
+**Target:** Unity 6 LTS (6000.x), C# 9, .NET Standard 2.1
+**Companion documents:** `GDD.md`, `ROADMAP.md`
 
 ---
 
-## 1. Why Unity, and what if not Unity
+## 0. What changed in v0.2
 
-The design is a first-person 3D life sim with heavy UI, cutscenes and small minigames. That combination has the strongest off-the-shelf support in Unity:
+| Area | Change |
+|---|---|
+| Match | A full first-person match layer is now in scope: ball physics, dribbling, shooting, 21 AI players, rating tracking |
+| Progression | `ProgressMath` replaced by `AttributeXpService` + `PlayerLevelService` |
+| Calendar | A `ScheduleService` owns the 5–6 day week and the skip flow |
+| Career | `TransferService`, `MarketValueCalculator`, `RelationshipService` |
+| Scenes | Stadium/arena scenes added; per-country city kits |
+| Performance | 22 animated characters per frame is now the dominant budget |
+| Save | New schema fields for XP, level, schedule, contracts, relationships |
+
+The v0.1 decisions that survive unchanged: Unity + URP, a **pure C# Core** with no `UnityEngine`, assemblies with a one-way dependency chain, data-driven balance, versioned saves, and a fast `dotnet test` suite.
+
+---
+
+## 1. Why Unity, and the escape hatch
 
 | Requirement | Unity | Godot 4 (.NET) |
 |---|---|---|
-| First-person controller + interaction | Trivial (CharacterController) | Trivial |
-| Cutscenes (handshake, intro) | Timeline + Cinemachine | AnimationTree, more manual |
-| ScriptableObject data authoring | Best-in-class | Custom Resources, weaker inspector |
-| Character animation retargeting | Mecanim + humanoid rigs | Workable, fewer assets |
-| Asset store (interiors, characters) | Huge | Small |
-| C# depth | Native, mature | Officially supported, smaller ecosystem |
-| Console porting later | First-party paths | Harder |
+| First-person + ball physics | Strong | Strong |
+| 22-character AI match | Mature NavMesh, animation, LOD | Workable, more manual |
+| Cutscenes (handshake, intro) | Timeline + Cinemachine | Manual |
+| ScriptableObject authoring | Best-in-class | Weaker inspector |
+| Asset store (stadiums, kits, characters) | Huge | Small |
+| C# depth | Native | Good, smaller ecosystem |
+| Console later | First-party paths | Harder |
 
-**Decision: Unity 6 LTS + URP**, desktop-targeted.
+**Decision: Unity 6 LTS + URP**, PC-targeted.
 
-**Escape hatch:** almost all gameplay logic lives in a **pure C# core library with zero `UnityEngine` references** (§2). If the engine choice ever changes, `Assets/_Project/Core/` and `Tests/Core.Tests/` move unchanged; only presentation layers are rewritten. This is the single most valuable architectural decision in the document and it costs about one day of setup.
+**Escape hatch:** gameplay logic lives in `Core/` with **zero** `UnityEngine` references. If the engine ever changes, Core and its tests move unchanged; only presentation is rewritten. This costs a day at M0 and pays for itself the first time a system needs testing without launching the editor.
 
 ---
 
 ## 2. Solution layout
 
 ```
-FootbalSim/                      (repo root)
-├─ README.md
-├─ docs/
-│  ├─ GDD.md
-│  ├─ ARCHITECTURE.md
-│  └─ ROADMAP.md
-├─ unity/                        (Unity project root)
-│  ├─ Assets/
-│  │  ├─ _Project/
-│  │  │  ├─ Core/               ← pure C#, NO UnityEngine
-│  │  │  │  ├─ FootbalSim.Core.asmdef
-│  │  │  │  ├─ Time/            GameTime, IClock, Calendar
-│  │  │  │  ├─ Attributes/      AttributeId, AttributeSet, PositionProfile
-│  │  │  │  ├─ Needs/           NeedId, NeedState, NeedsModel
-│  │  │  │  ├─ Economy/         Wallet, LedgerEntry
-│  │  │  │  ├─ Training/        DrillResult, ProgressMath
-│  │  │  │  ├─ News/            NewsEvent, NewsComposer, NewsTemplate
-│  │  │  │  ├─ Match/           MatchSimulator, MatchMoment
-│  │  │  │  ├─ Save/            SaveGame, SaveMigration
-│  │  │  │  └─ Common/          Result, GameMath, IRandomSource, IEventBus
-│  │  │  ├─ Data/               ← ScriptableObject definitions (Unity)
-│  │  │  │  ├─ FootbalSim.Data.asmdef
-│  │  │  │  ├─ Items/ Attributes/ Drills/ News/ Flats/ Cars/ Drinks/
-│  │  │  ├─ Gameplay/           ← MonoBehaviours, services (Unity)
-│  │  │  │  ├─ FootbalSim.Gameplay.asmdef
-│  │  │  │  ├─ Player/ Interaction/ Needs/ Training/ World/ NPC/
-│  │  │  ├─ Presentation/       ← UI, audio, cameras, VFX (Unity)
-│  │  │  │  ├─ FootbalSim.Presentation.asmdef
-│  │  │  ├─ Bootstrap/          ← scene composition root
-│  │  │  │  ├─ FootbalSim.Bootstrap.asmdef
-│  │  │  ├─ Scenes/  Prefabs/  Art/  Audio/
-│  │  ├─ Tests/
-│  │  │  ├─ EditMode/  (Unity Test Framework)
-│  │  │  └─ PlayMode/
-│  │  ├─ Settings/             URP, input actions, quality
-│  │  └─ StreamingAssets/      localisation CSVs, balance CSVs
+FootbalSim/
+├─ docs/                          GDD, ARCHITECTURE, ROADMAP, SOURCE-TRANSLATION
+├─ unity/
+│  ├─ Assets/_Project/
+│  │  ├─ Core/                    pure C#, no UnityEngine
+│  │  │  ├─ Time/                 GameTime, IClock, Calendar, ScheduleService
+│  │  │  ├─ Attributes/           AttributeId, AttributeSet, PositionProfile
+│  │  │  ├─ Progression/          AttributeXpService, XpCurve, PlayerLevelService
+│  │  │  ├─ Needs/                NeedId, NeedState, NeedsModel
+│  │  │  ├─ Economy/              Wallet, LedgerEntry, Contract, MarketValue
+│  │  │  ├─ Training/             DrillResult, XpTier, TrainingRules
+│  │  │  ├─ Match/                MatchSetup, MatchState, RatingTracker, MatchSimulator
+│  │  │  ├─ Career/               FixtureList, TransferOffer, TransferProbability, Relationships
+│  │  │  ├─ News/                 NewsEvent, NewsComposer, NewsTemplate
+│  │  │  ├─ Save/                 SaveGame, SaveMigration
+│  │  │  └─ Common/               Result, GameMath, IRandomSource, IEventBus
+│  │  ├─ Data/                    ScriptableObjects + ContentDatabase
+│  │  ├─ Gameplay/
+│  │  │  ├─ Player/               FirstPersonMotor, Interactor, PlayerStateMachine
+│  │  │  ├─ Football/             BallController, DribbleController, ShootingController, MatchDirector
+│  │  │  ├─ Ai/                   TeamAi, PlayerAgent, GoalkeeperAgent
+│  │  │  ├─ Training/             DrillScenes, StationMinigames
+│  │  │  ├─ World/                SceneFlowService, Doors, Npcs
+│  │  │  └─ Services/             Unity implementations of every Core interface
+│  │  ├─ Presentation/            HUD, menus, cutscenes, audio, VFX
+│  │  ├─ Bootstrap/               composition root
+│  │  ├─ Scenes/ Prefabs/ Art/ Audio/
+│  │  ├─ Settings/                URP, input actions, quality
+│  │  └─ StreamingAssets/         localisation CSVs, balance CSVs
 │  ├─ Packages/manifest.json
 │  └─ ProjectSettings/
-├─ tests/Core.Tests/            (plain .NET NUnit project)
-│  └─ Core.Tests.csproj         links ../../unity/Assets/_Project/Core/**/*.cs
+├─ tests/Core.Tests/              NUnit, links Core sources, no Unity
 ├─ .github/workflows/ci.yml
 └─ .gitignore / .gitattributes
 ```
 
-### Assembly dependency rules
+### Assembly rules
 
 ```
 Bootstrap ──► Presentation ──► Gameplay ──► Data ──► Core
-     └──────────────┴──────────────┴──────────┘
 ```
 
-- **Core** depends on nothing but the BCL. No `UnityEngine`, no `MonoBehaviour`, no `Mathf` (use the internal `GameMath`).
-- **Data** depends on Core only; holds `ScriptableObject` definitions and conversion to Core models.
-- **Gameplay** depends on Data; all runtime services and `MonoBehaviour` glue.
-- **Presentation** depends on Gameplay; nothing in Gameplay may reference Presentation. UI listens through events.
-- **Bootstrap** is the only assembly that knows all four; it is the composition root.
+- **Core**: BCL only. No `UnityEngine`, no `Mathf` (use `GameMath`), no `Time.deltaTime`.
+- **Data**: SO definitions and conversion into Core models.
+- **Gameplay**: MonoBehaviours and Unity service implementations.
+- **Presentation**: UI/audio/camera; Gameplay must never reference it.
+- **Bootstrap**: the only assembly that sees all four.
 
-Enforce with asmdef references only (no "Auto Referenced" hacks), and a one-line CI check that `Core/` contains no `using UnityEngine`.
+CI greps `Core/` for `using UnityEngine` and fails the build if found.
 
 ---
 
 ## 3. Core services
 
-Seven services, all interfaces in Core, all implementations registered in Bootstrap.
+| Service | Responsibility |
+|---|---|
+| `IClock` | Game time, tick, pause, scale |
+| `IScheduleService` | The week's active days, session slots, skip rules |
+| `INeedsService` | Four needs and their decay |
+| `IAttributeService` | Attribute values, overall, change events |
+| `IAttributeXpService` | Per-attribute XP pools, cost curve, level-ups |
+| `IPlayerLevelService` | Career XP, level, training multiplier |
+| `IEconomyService` | Money and ledger |
+| `ITrainingService` | Session rules, XP awards, repeat multipliers |
+| `IMatchService` | Match setup, rating tracking, result finalisation |
+| `ICareerService` | Fixtures, contracts, transfers, market value |
+| `IRelationshipService` | Fans, coach, board, girlfriend |
+| `ISaveService` | Slots, versioned JSON, migrations |
+| `IEventBus` | Typed pub/sub |
 
-| Service | Responsibility | Notes |
-|---|---|---|
-| `IClock` | Game time, tick, pause, time scale, day/hour events | Single source of truth for time |
-| `INeedsService` | Read/modify the four needs, decay tick | Driven by `IClock` |
-| `IAttributeService` | Attribute values + overall + change events | Owns `AttributeSet` |
-| `IEconomyService` | Money, ledger, affordability checks | Every transaction is a `LedgerEntry` |
-| `ITrainingService` | Validates a drill request, applies results, weekly multipliers | Pure math in Core |
-| `ISaveService` | Capture/restore game state, slots, migrations | JSON on disk |
-| `IEventBus` | Typed pub/sub between systems | Struct events, no allocations per publish |
-
-DI: **VContainer** (fast, Unity-native) or a hand-rolled 80-line service locator. Recommendation: VContainer from M0 — retrofitting DI later is expensive, and VContainer's scene/`LifetimeScope` model maps cleanly onto per-interior scopes.
-
----
-
-## 4. Data-driven by default
-
-**Rule: no balance number may appear in a `.cs` file except as a default in a `[SerializeField]` for a designer to override.** Every tunable is a ScriptableObject or CSV row.
-
-| Dataset | Asset type | Authoring |
-|---|---|---|
-| Attributes, display names, group, icon | `AttributeDefinition` SO | Once |
-| Position weight profiles | `PositionProfile` SO | 4+ assets |
-| Drill definitions (id, attribute, tiers, par times, gains) | `DrillDefinition` SO | 13 assets |
-| Items (ingredients, meals, drinks, cars) | `ItemDefinition` SO | ~40 assets |
-| News templates per tag/severity | `NewsTemplate` SO | ~25 assets |
-| Flats, clubs, fixtures | SO | ~10 assets |
-| Balance numbers for mass tuning | CSV in `StreamingAssets/Balance/` | Designers |
-
-A `ContentDatabase` in Data loads all definitions at boot into dictionaries keyed by stable string ID (`"drill.finishing.one_on_one"`). Stable IDs, never enum ordinals, are what make saves survive content edits.
+DI: **VContainer**, with a root `LifetimeScope` in `Boot` and per-interior child scopes.
 
 ---
 
-## 5. Time
+## 4. Data-driven balance
+
+No balance number in a `.cs` file. Everything is a ScriptableObject or CSV under `StreamingAssets/Balance/`:
+
+| Dataset | File |
+|---|---|
+| Attribute XP costs | `attribute_xp.csv` |
+| Level curve | `levels.csv` |
+| Drill definitions and XP tiers | `drills.csv` + `DrillDefinition` SO |
+| Leagues, clubs, fixtures templates | `leagues.csv` |
+| Transfer and wage factors | `transfers.csv` |
+| News templates | `NewsTemplate` SO ×~40 |
+| Items, drinks, cars, flats | SO + CSV |
+
+Stable string IDs (`"attr.finishing"`, `"drill.t1.one_on_one"`, `"club.tr.galatasaray"`) — never enum ordinals. IDs are what make saves survive content edits.
+
+---
+
+## 5. Time and schedule
 
 ```csharp
-namespace FootbalSim.Core.Time
+public readonly record struct GameTime(int Day, int Hour, int Minute)
 {
-    public readonly record struct GameTime(int Day, int Hour, int Minute)
+    public const int MinutesPerDay = 1440;
+    public int TotalMinutes => Day * MinutesPerDay + Hour * 60 + Minute;
+    public static GameTime FromTotalMinutes(int t) =>
+        new(t / MinutesPerDay, t % MinutesPerDay / 60, t % 60);
+    public GameTime AddMinutes(int m) => FromTotalMinutes(TotalMinutes + m);
+}
+
+public enum DayType { Off, Gym, Facility, Match }
+
+public sealed class WeekSchedule
+{
+    public int WeekIndex { get; }
+    public IReadOnlyList<DayType> Days { get; }        // exactly 7
+    public bool HasEuropeanFixture { get; }
+    public int ActiveDayCount => Days.Count(d => d != DayType.Off);
+}
+
+public interface IScheduleService
+{
+    WeekSchedule Current { get; }
+    DayType Today { get; }
+    bool IsBuildingOpen(string buildingId, DayType day, int hour);
+    bool TrySkipToNextActiveDay(out GameTime wakeAt);
+}
+```
+
+Rules encoded in Core, so they are testable without a scene:
+
+| Day type | Buildings open |
+|---|---|
+| `Off` | Flat, market |
+| `Gym` | Flat, market, gym, bar |
+| `Facility` | Flat, market, facility, bar |
+| `Match` | Flat, market, stadium, bar |
+
+A week generator produces 2 gym + 2 facility + 1 match, upgrading to 2 matches when the club has a European fixture — the 5/6-day rule from the source. The generator is pure and seeded, so a fixture list can be asserted in tests.
+
+---
+
+## 6. Progression (v0.2)
+
+### 6.1 Attribute XP
+
+```csharp
+public static class XpCurve
+{
+    /// GDD §3.3 — source: 65->66 = 1000, +250 per point above 65.
+    public static int CostToNext(int attribute) =>
+        Math.Max(250, 1000 + 250 * (attribute - 65));
+}
+
+public sealed class AttributePool
+{
+    public int Value { get; private set; }      // 1..99
+    public int Xp { get; private set; }
+
+    public AttributeGain Add(int xp)
     {
-        public const int MinutesPerHour = 60;
-        public const int MinutesPerDay  = 24 * MinutesPerHour;
-
-        public int TotalMinutes => Day * MinutesPerDay + Hour * MinutesPerHour + Minute;
-
-        public static GameTime FromTotalMinutes(int total)
+        Xp += xp;
+        int gained = 0;
+        while (Value < 99 && Xp >= XpCurve.CostToNext(Value))
         {
-            int day = total / MinutesPerDay;
-            int rem = total % MinutesPerDay;
-            return new GameTime(day, rem / MinutesPerHour, rem % MinutesPerHour);
+            Xp -= XpCurve.CostToNext(Value);
+            Value++;
+            gained++;
         }
-
-        public GameTime AddMinutes(int minutes) => FromTotalMinutes(TotalMinutes + minutes);
-        public override string ToString() => $"Day {Day} {Hour:00}:{Minute:00}";
+        return new AttributeGain(gained, Xp, XpCurve.CostToNext(Value));
     }
+}
 
-    public interface IClock
+public static class XpTier
+{
+    public static int FromScore(float score01) => score01 switch
     {
-        GameTime Now { get; }
-        float TimeScale { get; set; }   // 0.5 = slow, 2 = fast; 0 while paused
-        bool IsPaused { get; set; }
-
-        void Advance(int gameMinutes);  // instant skip (sleep)
-
-        event Action<GameTime> MinuteChanged;
-        event Action<GameTime> HourChanged;
-        event Action<GameTime> DayChanged;
-    }
+        < 0.40f => 50,
+        < 0.60f => 100,
+        < 0.80f => 150,
+        < 0.95f => 200,
+        _       => 250,
+    };
 }
 ```
 
-Implementation maps `Time.deltaTime × TimeScale × minutesPerSecond` into whole minutes, fires events, and **never advances while `IsPaused`** or outside `FreeRoam`. Sleep calls `Advance()`, not a coroutine, so a 10-hour skip is instantaneous and testable.
+Repeat multiplier and slot rules live in `TrainingRules` (Core), not in the drill scenes:
+
+```csharp
+public sealed class TrainingRules
+{
+    public const int SessionsPerTypePerWeek = 2;
+    public const int SlotsPerSession          = 3;
+    public const int MaxSameDrillPerSession   = 2;
+    public const float RepeatBonusPerDay      = 1.02f;
+    public const float RepeatBonusCap         = 1.50f;
+
+    public float RepeatMultiplier(string drillId, int priorDaysTrained) =>
+        MathF.Min(RepeatBonusCap, MathF.Pow(RepeatBonusPerDay, priorDaysTrained));
+}
+```
+
+The drill scene produces a `DrillResult`; `ITrainingService` validates the slot, applies the multiplier and calls `AttributePool.Add`. **No minigame ever touches an attribute directly.**
+
+### 6.2 Player level
+
+```csharp
+public static class LevelCurve
+{
+    /// GDD §3.5 — deliberately slow: 1000*(L-1)^2 + 500*(L-1)
+    public static int TotalXpForLevel(int level) =>
+        1000 * (level - 1) * (level - 1) + 500 * (level - 1);
+
+    public static float TrainingMultiplier(int level) =>
+        MathF.Min(2.00f, 1f + 0.04f * (level - 1));
+}
+
+public static class MatchXp
+{
+    public static int For(MatchResult r) =>
+        (int)MathF.Max(0, 120f * (r.Rating - 5f))
+        + (r.Win ? 120 : r.Draw ? 60 : 0)
+        + 60 * r.Goals + 40 * r.Assists;
+}
+```
+
+Career XP is **only** awarded from matches (`D17`), matching the source. Its only sink is the level, whose only effect is the training multiplier — a clean single-loop economy that cannot be exploited.
 
 ---
 
-## 6. Key systems
+## 7. Match architecture (v0.2 — the big one)
 
-### 6.1 Needs
+### 7.1 Layers
 
-Pure model in Core; a thin `NeedsService` MonoBehaviour ticks it.
+```
+MatchDirector (scene state machine)
+ ├─ MatchRules            (time, halves, out-of-play, restarts)   [Core]
+ ├─ RatingTracker        (events -> live rating)                 [Core]
+ ├─ TeamAi x2            (formation, marking, pressing)          [Gameplay]
+ │   ├─ PlayerAgent x10  (state machine + steering)
+ │   └─ GoalkeeperAgent
+ ├─ PlayerRig            (the human: motor, dribble, shoot, pass)
+ └─ BallController       (custom ball physics)
+```
+
+`MatchDirector` is the only object that advances match time; `MatchRules` and `RatingTracker` are engine-free and unit-tested.
+
+### 7.2 Ball
+
+Do **not** drive the ball with a plain `Rigidbody` and hope. Use a hybrid:
+
+- A kinematic `BallController` integrates velocity, gravity, Magnus (curve), bounce and roll friction itself in `FixedUpdate`.
+- Collision with players is resolved by a sphere-vs-capsule test that also decides **possession** (`BallState.Loose / Controlled / InFlight`).
+- A trigger collider reports goals/out-of-play to `MatchRules`.
 
 ```csharp
-public enum NeedId { Energy, Hygiene, Bladder, Intoxication }
-
-public sealed class NeedState
+public sealed class BallController : MonoBehaviour
 {
-    public float Value { get; private set; }
-    public float Max   { get; }
-    public NeedState(float max, float initial) { Max = max; Value = initial; }
+    public BallState State { get; private set; }
+    public Vector3 Velocity { get; private set; }
+    public PlayerAgent Owner { get; private set; }
 
-    public void Add(float delta) => Value = GameMath.Clamp(Value + delta, 0f, Max);
-    public float Normalized => Value / Max;
+    public void Kick(Vector3 velocity, float spin) { /* ... */ }
+    public void GiveTo(PlayerAgent player)         { /* ... */ }
+    public void Release(Vector3 velocity)          { /* ... */ }
 }
+```
 
-public sealed class NeedsModel
+Deterministic integration at a fixed 60 Hz step means replays and tests behave identically.
+
+### 7.3 Dribbling and skill moves
+
+```csharp
+public sealed class DribbleController : MonoBehaviour
 {
-    private readonly Dictionary<NeedId, NeedState> _needs;
-    private readonly NeedsTuning _tuning;   // per-hour decay, per-activity costs
+    // Combo buffer: direction presses with timestamps, matched against data
+    private readonly Queue<DirectionPress> _buffer = new();
 
-    public void Tick(int gameMinutes)
+    public SkillMove Match(IReadOnlyList<SkillMoveDefinition> moves, float now);
+}
+```
+
+Skill moves are data:
+
+```json
+{ "id": "move.inside_out", "sequence": ["S+D", "A+W"], "windowMs": 450,
+  "durationMs": 420, "ballOffset": 0.9, "beatChance": 0.65 }
+```
+
+`S+D → A+W` (drag right, go left) is literally the source's example. New moves ship as data.
+
+### 7.4 Player motor
+
+First person, capsule collider, custom acceleration/braking (not raw `CharacterController.Move` with instant velocity), with three gaits (walk 2.2, run 5.0, sprint 7.6 m/s) and a ball-possession modifier. Sprint drains a **match stamina** pool that is separate from the day-level Energy need — a 90-minute match should not empty tomorrow.
+
+### 7.5 AI
+
+Keep it small and legible. Every outfield AI is a state machine over:
+
+```
+HoldShape → Press → Support → Mark → Recover
+```
+
+with three inputs: distance to ball, distance to formation slot, and team phase (attack/defence). Utility scores choose the state; steering (seek/arrive/separation) moves the body; the ball controller decides who may take possession.
+
+**Do not build:** behaviour trees with 40 nodes, per-player pathfinding to the centimetre, or squad-wide tactical simulation. 10 agents per team, one formation per club, five states, is enough to *look* like football at 6-minute halves.
+
+| Difficulty | Reaction delay | Positioning error | Tackle accuracy |
+|---|---:|---:|---:|
+| Amateur | 380 ms | ±2.5 m | 55% |
+| Pro | 240 ms | ±1.4 m | 70% |
+| Elite | 140 ms | ±0.7 m | 84% |
+
+### 7.6 Rating tracker
+
+```csharp
+public sealed class RatingTracker
+{
+    private float _rating = 6.5f;                       // GDD §4.5
+    public float Rating => Math.Clamp(_rating, 3f, 10f);
+
+    public void Apply(MatchEventType type, MatchContext ctx)
     {
-        float hours = gameMinutes / 60f;
-        foreach (var (id, state) in _needs)
-            state.Add(_tuning.DecayPerHour[id] * hours);
+        _rating += type switch
+        {
+            MatchEventType.Goal          =>  0.90f,
+            MatchEventType.Assist        =>  0.60f,
+            MatchEventType.KeyPass       =>  0.15f,
+            MatchEventType.PossessionLost=> -0.12f,
+            MatchEventType.BigMiss       => -0.30f,
+            MatchEventType.YellowCard    => -0.25f,
+            MatchEventType.RedCard       => -0.90f,
+            MatchEventType.OwnGoal       => -0.90f,
+            _ => 0f
+        };
+        RatingChanged?.Invoke(Rating);
     }
-
-    public void ApplyActivity(ActivityCost cost) { /* training, match, drink, meal */ }
 }
 ```
 
-Balance lives in `NeedsTuning` (a Core POCO populated from an SO). The tick is **idempotent for a given number of minutes**, which makes it trivially testable: 60 ticks of 1 minute == 1 tick of 60 minutes (within float tolerance; use a tolerance of 0.01 in tests).
+Every match event is also a `NewsEvent` candidate, so a hat-trick reaches the TV the same evening.
 
-### 6.2 Interaction
+### 7.7 Match time and skipping
 
-```csharp
-public readonly record struct InteractionPrompt(string Key, string Verb, bool Enabled);
+Match days can be skipped (GDD §4.1). Skipping calls `MatchDirector.SimulateInstant()` — a pure-Core, attribute-weighted result with no presentation — which produces the same `MatchResult` shape as a played match. **One result type, two producers**, so downstream systems (rating, XP, news, table, transfers) never branch on "was it played".
 
-public interface IInteractable
-{
-    string DisplayName { get; }
-    bool CanInteract(PlayerContext ctx);
-    InteractionPrompt GetPrompt(PlayerContext ctx);   // localisation key + verb
-    void Interact(PlayerContext ctx);                 // primary (E)
-    void SecondaryInteract(PlayerContext ctx);        // optional (G); default no-op
-}
+---
 
-public interface IInteractor
-{
-    IInteractable Current { get; }
-    void Tick(IReadOnlyList<IInteractable> candidates);
-}
-```
+## 8. Career
 
-Selection: filter by `CanInteract`, then by distance ≤ 2.5 m and dot ≥ cos(45°), then rank by `dot² / distance`. The player controller holds one `IInteractor`; the HUD only reads `Current` and renders its prompt. Adding a new interactive object never touches the controller or the HUD.
+### 8.1 Fixtures
 
-`SecondaryInteract` is a default interface method returning nothing, so the bed is the only object that overrides it (Sleep vs Rest) — exactly the source's `E` / `G`.
+`FixtureService` generates a double round-robin per league from a seeded algorithm, inserts European midweek fixtures on a coefficient basis, and exposes `NextFixture`, `Table`, and `MatchDay`.
 
-### 6.3 Training pipeline
+### 8.2 Transfers
 
 ```csharp
-public readonly record struct DrillResult(
-    DrillId Drill,
-    float Score01,          // 0..1
-    int Reps,
-    float DurationSeconds,
-    string FailureReason = null);
+public readonly record struct TransferOffer(
+    string ClubId, int Wage, int Years, int Fee, int SigningBonus, OfferOrigin Origin);
 
-public static class ProgressMath
+public enum OfferOrigin { ClubToPlayer, PlayerToClub }
+
+public static class TransferProbability
 {
-    public const float BaseGain   = 8f;
-    public const float ScoreBonus = 32f;
-    public const float PointsPerAttribute = 100f;
-
-    public static float Headroom(float attribute) =>
-        MathF.Pow(Math.Clamp(1f - attribute / 99f, 0f, 1f), 1.5f);
-
-    public static float Gain(
-        float currentAttribute, float score01, float fatigue01,
-        float coachBonus, float weeklyMultiplier)
+    /// GDD §4.8
+    public static float Accept(
+        float marketValue, float clubExpectedValue, float expectedWage,
+        float demandedWage, float reputationFactor)
     {
-        float fatigue = 1f - 0.65f * Math.Clamp(fatigue01, 0f, 1f);  // 1.00 → 0.35
-        float raw = (BaseGain + ScoreBonus * Math.Clamp(score01, 0f, 1f))
-                    * Headroom(currentAttribute) * fatigue
-                    * coachBonus * weeklyMultiplier;
-        return score01 < 0.25f ? 0f : raw;
+        float fit = Math.Clamp(marketValue / clubExpectedValue, 0.2f, 1.5f);
+        float wage = Math.Clamp(1f - 0.5f * (demandedWage - expectedWage) / expectedWage, 0.10f, 1.10f);
+        return Math.Clamp(0.55f * fit * wage * reputationFactor, 0.05f, 0.90f);
     }
 }
 ```
 
-The minigame scene **never** touches attributes. It produces a `DrillResult`; `ITrainingService` validates (does the player have the energy? is the coach present? has the weekly cap been hit?), applies it, raises `AttributeChanged`, and logs a `LedgerEntry`-style training record for the weekly report. This keeps 13 minigames from each re-implementing progression math.
+**Wheel UI contract:** the RNG roll happens in `TransferService` **before** the wheel animates. The wheel receives `(probability, success)` and animates to that outcome. Never let the animation choose the result — that is untestable and feels rigged.
 
-### 6.4 Economy
+### 8.3 Relationships
 
 ```csharp
-public readonly record struct LedgerEntry(GameTime When, int Amount, string ReasonKey, string SourceId);
+public enum RelationshipId { Fans, Coach, Board, Girlfriend }
 
-public interface IEconomyService
+public sealed class RelationshipService
 {
-    int Balance { get; }
-    bool CanAfford(int amount);
-    bool TrySpend(int amount, string reasonKey, string sourceId = null);
-    void Earn(int amount, string reasonKey, string sourceId = null);
-    IReadOnlyList<LedgerEntry> Today { get; }
-    event Action<int> BalanceChanged;
+    public void Apply(RelationshipId id, float delta, string causeId)
+    {
+        // clamped 0..100, logs the cause for the UI ("why did my coach dislike me?")
+    }
 }
 ```
 
-Every transaction is journaled — the journal feeds the TV bulletin ("spotted leaving the bar", "arrives in style") and a debug screen. No `PlayerPrefs`, no direct `Money -= x` anywhere.
+Every delta stores its cause, so the Relationships screen can show *"−8 fans: your transfer approach to <club> was rejected"*. Unexplained stat drops are the fastest way to make a sim feel arbitrary.
 
-### 6.5 Save system
+---
+
+## 9. Save system (v0.2 schema)
 
 ```csharp
-[Serializable]
 public sealed class SaveGame
 {
-    public int SchemaVersion = 1;
+    public int SchemaVersion = 2;
     public string CareerName;
-    public long CreatedUtcTicks;
     public int PlaytimeSeconds;
 
     public GameTimeSave Time;
-    public NeedsSave Needs;                       // need id → value
-    public Dictionary<string, float> Attributes;  // stable attribute id → value
-    public Dictionary<string, int> Inventory;     // item id → qty + freshness list
+    public WeekScheduleSave Schedule;
+    public Dictionary<string, float> Needs;
+    public Dictionary<string, AttributeSave> Attributes;   // value + xp
+    public int CareerXp, Level;
+    public Dictionary<string, int> Inventory;
     public int Balance;
-    public string FlatId, ClubId;
+    public string FlatId, ClubId, LeagueId, CountryId;
     public List<string> OwnedCarIds;
-    public List<string> WorldFlags;               // "met_coach", "tutorial_done"
+    public ContractSave Contract;
+    public Dictionary<string, float> Relationships;
+    public List<TransferOfferSave> PendingOffers;
     public List<NewsSave> NewsLog;
-    public int Reputation;
+    public List<string> WorldFlags;
+    public List<FixtureSave> Fixtures;
 }
 ```
 
-Rules:
-
-1. **Versioned + migrated.** `SaveMigration.Migrate(json, fromVersion, toVersion)`. A save that cannot be migrated loads nothing and shows a clear message — it never half-loads.
-2. **Atomic writes.** Write to `save_1.tmp`, flush, then replace. Never truncate the live file.
-3. **Three slots + one autosave**, autosave on sleep and on returning home.
-4. **Stable string IDs everywhere** (`"attr.finishing"`, `"item.kelle_paca"`). Renaming an enum member must not break a save.
-5. **Never persist derived values** (overall, needs bar colours, computed prompts).
-6. Serializer: `System.Text.Json` with a source-generated context (AOT-safe, fast) over `JsonUtility`, which cannot handle dictionaries.
-7. Save path: `Application.persistentDataPath/Saves/`; dev builds also write a human-readable `debug_save.json`.
-
-### 6.6 Match simulation (Option B from GDD §5.6)
-
-```csharp
-public sealed class MatchSimulator
-{
-    public MatchResult Simulate(MatchSetup setup, IRandomSource rng)
-    {
-        // 1. Team strength from squad ratings + form
-        // 2. Generate a timeline of ~10 MatchMoment (minute, type, context)
-        // 3. Resolve each moment: player-controlled ones are returned as Pending
-        // 4. Fill non-player moments from attribute-weighted rolls
-    }
-}
-
-public enum MomentType { OneOnOne, Header, LongShot, ThroughPass, Tackle, Cross }
-```
-
-The simulator is pure Core: given a seed and a list of resolved player moments, it returns a full result. Determinism means a match can be replayed, tested, and unit-tested without a scene — and minigames supply the player's moments by reusing the drill components.
-
-### 6.7 News composer
-
-```csharp
-public readonly record struct NewsEvent(
-    string Tag, int Severity, string SubjectPlayer, string Club, float? Number);
-
-public sealed class NewsComposer
-{
-    public IReadOnlyList<NewsLine> Compose(IReadOnlyList<NewsEvent> events, int maxLines = 4);
-}
-```
-
-Templates are data (`{player}`, `{club}`, `{value}`, `{drink}` token substitution). The composer sorts by severity, drops duplicates, and guarantees at least one line if anything happened. Presentation layer renders it to TV, newspaper and phone from the same list — one source, three surfaces.
-
-### 6.8 Randomness
-
-`IRandomSource` wraps a seeded PRNG (xoshiro or `System.Random` with a stable algorithm). The seed is stored in the save. `UnityEngine.Random` is banned outside presentation-only VFX. Determinism is a testability feature, not a nicety.
+Rules: versioned + migrated; atomic writes via temp file + replace; 3 slots + autosave; stable string IDs; **never persist derived values** (overall, cost-to-next, ratings history beyond what the UI needs). `SchemaVersion` 1 saves from v0.1 do not exist in the wild, so v0.2 starts at 2 and migration is exercised by tests from day one.
 
 ---
 
-## 7. Scene flow and player state
+## 10. Scene flow
 
-### 7.1 Control state machine
-
-```
-FreeRoam ──focus interactable──► Interacting ──► Dialogue ──► Minigame ──► Cutscene
-   ▲              │                   │             │              │            │
-   └──────────────┴───────────────────┴─────────────┴──────────────┴────────────┘
-                          (all non-FreeRoam states: clock paused)
-```
-
-Implemented as an explicit `PlayerStateMachine` with `Enter/Exit/Tick` per state — not a boolean soup of `if (isMenu)`. Only `FreeRoam` reads movement input and lets `IClock` advance. Every state is a separate small class; adding the phone menu later is a new state, not a new `if`.
-
-### 7.2 Scene composition
-
-| Scene | Contents | Loaded |
+| Scene | Contents | Load |
 |---|---|---|
-| `Boot` | Bootstrap, services, `ContentDatabase`, save check | Always |
-| `MainMenu` | Menu UI, cinematic camera | Single |
-| `City` | Terrain, buildings' exteriors, doors, NPC paths | Additive |
-| `Interior_<Name>` | One per interior: flat tiers ×3, market, bar, gallery, facility, gym | Additive |
+| `Boot` | Services, content database, save check | always |
+| `MainMenu` | Menu, cinematic camera | single |
+| `City_<Country>` | Exteriors, doors, NPC paths | additive |
+| `Interior_<Id>` | 8 interiors per city | additive |
+| `Arena_<Club>` | Stadium, pitch, tunnel, crowd impostors | additive on match day |
 
-Doors call `SceneFlowService.Enter(interiorId)` → fade → unload previous interior, load next, place the player at a named spawn point, restore the state machine. **No seamless open world in v1.0.** Target: interior transition under 1.5 s on the min-spec machine.
+Interiors are prefabs in Addressables loaded into one `Interior` scene — only `Boot`, `MainMenu` and `City` are real Unity scenes. A country change unloads `City_<Country>` and its interiors and loads the new kit.
 
-The player rig, HUD and services persist across transitions (in `Boot`, or via `DontDestroyOnLoad` on a single `Persistent` root). Only environment content swaps.
+Player control states:
+
+```
+FreeRoam ─► Interacting ─► Dialogue ─► Drill ─► Cutscene
+     └────► Match (own state machine) ─────┘
+```
+
+Only `FreeRoam` and `Match` advance the clock; inside `Match`, the day clock is paused and match time runs instead.
 
 ---
 
-## 8. Project conventions
+## 11. Performance budgets (min spec GTX 1650 / 16 GB / R5 3600)
 
-### 8.1 Code style
-
-| Item | Rule |
+| Budget | Target |
 |---|---|
-| Language version | C# 9 (Unity 6 constraint), nullable annotations **enabled** in Core |
-| Naming | `PascalCase` types/members, `_camelCase` private fields, `camelCase` locals/params |
-| File name | Must equal the type name for MonoBehaviours/SOs; grouping allowed in Core |
-| Namespaces | `FootbalSim.Core.*`, `FootbalSim.Data.*`, `FootbalSim.Gameplay.*`, `FootbalSim.Presentation.*` |
-| Unity API use | No `FindObjectOfType`, no `GetComponent` in `Update`, no string-based tags/layers (use layer constants) |
-| `Update` | Only on the controller, clock driver, and the interactor. Everything else is event-driven or ticked by a single `GameLoop` |
-| Public API | `sealed` by default; interfaces where a test double is needed and nowhere else |
-| Errors | No `try/catch` swallowing. Use `Result<T>` for expected failures (insufficient funds, locked door) |
-| Comments | Explain *why*, not *what*. Every non-obvious balance formula cites its design section (`// GDD §4.4`) |
+| Frame time | ≤ 16.6 ms at 1080p |
+| 22 players + ball | ≤ 8 ms total (animation + AI + physics) |
+| Crowd | ≤ 1.5 ms (impostors, 1 draw call per stand section) |
+| Interior draw calls | ≤ 300 |
+| City draw calls | ≤ 800 |
+| Interior transition | ≤ 1.5 s |
+| Match load | ≤ 6 s |
+| Save write | ≤ 100 ms, off main thread |
+| GC spikes | ≤ 5 ms |
 
-### 8.2 Quality gates
+Techniques: GPU skinning + animation LOD (full rig < 15 m, half-rate 15–35 m, impostor beyond), 3 LODs per character, shared skeleton, Addressables, object pooling for VFX and prompts, no per-frame LINQ in gameplay code, `IL2CPP` release builds.
 
-- Roslyn analyzers + `TreatWarningsAsErrors` in the Core test project.
-- StyleCop/`.editorconfig` shared; CI fails on new warnings in Core.
-- A `Core` compile must not reference `UnityEngine`: verified by a CI grep.
-- Every new Core system ships with tests in the same PR.
-
-### 8.3 Git
-
-- `main` protected; work on feature branches; squash-merge with a descriptive title.
-- Conventional commits: `feat:`, `fix:`, `data:`, `docs:`, `test:`, `chore:`.
-- Unity: force **text** serialisation (YAML), visible meta files, `.gitattributes` with LFS for `*.fbx`, `*.png`, `*.wav`, `*.psd`.
-- Never commit `Library/`, `Temp/`, `Logs/`, `obj/`, `Build*/`.
+**Risk note:** 22 skinned characters is the budget item most likely to fail on low-end hardware. Decide the player-count LOD strategy at M5a, not during polish.
 
 ---
 
-## 9. Testing strategy
+## 12. Testing strategy
 
-| Layer | Framework | What it covers | Runtime |
+| Layer | Framework | Covers | Time |
 |---|---|---|---|
-| Core (fast) | NUnit via `dotnet test` | Progression math, needs tick, economy, save roundtrip + migration, news composer, match determinism | < 5 s, runs on every push |
-| Unity EditMode | Unity Test Framework | SO conversion, content database IDs unique, prefab wiring | ~30 s |
-| Unity PlayMode | UTF | One smoke test per scene: load, spawn, interact with the primary object, exit | ~3 min |
-| Manual | Test plan per milestone | Feel, reading of prompts, tuning | Milestone gates |
+| Core | NUnit (`dotnet test`) | XP curve, level curve, training rules, schedule generation, transfer probability, rating tracker, save roundtrip, fixture generation | < 5 s |
+| Unity EditMode | UTF | Content IDs unique, SO → Core mapping, prefab wiring | ~40 s |
+| Unity PlayMode | UTF | Scene smoke tests, one drill contract per drill, a scripted 60-second match | ~5 min |
+| Manual | Test plan | Match feel, drill fun, balance | per milestone |
 
-The `tests/Core.Tests/Core.Tests.csproj` trick — referencing Core sources directly by glob — means gameplay logic is tested in seconds without launching Unity. This is why Core must stay engine-free.
+The Core suite is the project's safety net: it runs without a Unity licence, on every push, in seconds.
 
 ```xml
 <ItemGroup>
@@ -434,88 +526,50 @@ The `tests/Core.Tests/Core.Tests.csproj` trick — referencing Core sources dire
 
 ---
 
-## 10. Performance budgets (min spec: GTX 1650 / 16 GB / R5 3600)
-
-| Budget | Target |
-|---|---|
-| Frame time | ≤ 16.6 ms (60 fps) at 1080p |
-| Interior draw calls | ≤ 300 |
-| City block draw calls | ≤ 800 (occlusion + baked lightmaps) |
-| Load to main menu | ≤ 8 s |
-| Interior transition | ≤ 1.5 s |
-| Save write | ≤ 100 ms (off the main thread) |
-| HUD allocations | 0 B/frame after warm-up |
-| GC spikes | ≤ 5 ms |
-
-Techniques: baked lightmaps indoors, single-directional light outdoors, GPU instancing for repeated props, object pooling for prompts and toasts, Addressables for interiors and audio, `IL2CPP` + `Master` build for release, no per-frame LINQ/`string.Format` in gameplay code.
-
----
-
-## 11. Third-party packages
+## 13. Packages
 
 | Package | Purpose | Risk |
 |---|---|---|
-| Input System | Rebinding, gamepad parity | Low |
-| Cinemachine | Cutscene and menu cameras | Low |
-| Timeline | Handshake/intro cutscenes | Low |
-| DOTween (or PrimeTween) | UI and prompt animation | Low |
-| TextMeshPro | All text, localisation | Low |
-| Addressables | Interior/audio loading | Medium — adds build complexity |
+| Input System | Rebinding, gamepad | Low |
+| Cinemachine | Menus, cutscenes, match camera | Low |
+| Timeline | Intro, handshake, season-end | Low |
+| DOTween / PrimeTween | UI motion | Low |
+| TextMeshPro | All text | Low |
+| Addressables | Interiors, arenas, audio | Medium |
 | VContainer | DI | Low |
 | System.Text.Json | Saves | Low |
 | NUnit | Tests | Low |
-| Odin Inspector (optional) | Designer tooling | Paid, optional |
+| Unity Cinemachine + Physics | — | built-in |
 
-**Deliberately not used:** any physics-heavy character controller asset, any dialogue framework (dialogues are 1–2 nodes), any ECS framework. The game is small; complexity must be earned.
-
----
-
-## 12. CI/CD
-
-`.github/workflows/ci.yml`:
-
-1. `dotnet test tests/Core.Tests` — every push and PR (no Unity licence needed).
-2. `game-ci/unity-test-runner` — EditMode + PlayMode, on PRs to `main`.
-3. `game-ci/unity-builder` — Windows x64 IL2CPP build, uploaded as an artifact, nightly and on tags.
-4. Cache `Library/` between runs; keep build minutes sane.
-5. Release tags `v*` → draft GitHub release with the build zip.
-
-A Unity licence must be stored as repository secrets (`UNITY_LICENSE`) — set up in M0, not at release time when it becomes an emergency.
+**Not used:** ECS/DOTS (team of 22 does not need it), any football framework, any dialogue framework.
 
 ---
 
-## 13. Known technical risks
+## 14. CI
 
-| Risk | Mitigation |
-|---|---|
-| 13 minigames = 13 bespoke input systems | One shared `DrillScene` template + reusable components (timing ring, aim reticle, cadence meter, balance wobble). Every drill is a composition, not a rewrite. |
-| Interior count growth (8 interiors in v1.0) | Interiors are prefabs in Addressables loaded into one `Interior` scene; only `City` and `Boot` are real scenes. |
-| Save corruption during rapid autosaves | Atomic write + single-flight lock + autosave only on safe transitions |
-| Balance drift between CSV and SO | Single source: CSV imported to SO at build; SO edited only for one-offs |
-| Determinism breaking on engine upgrade | Core RNG is our own, never `UnityEngine.Random` |
-| Localisation strings hard-coded under deadline pressure | An editor validation test fails the build on any literal UI string outside the table |
-| Solo-dev bus factor | Documents are the source of truth; every system has a section number referenced from code |
+1. `dotnet test tests/Core.Tests` on every push.
+2. `game-ci/unity-test-runner` (EditMode + PlayMode) on PRs to `main`.
+3. `game-ci/unity-builder` Windows IL2CPP artifact nightly and on tags.
+4. Cache `Library/`; store `UNITY_LICENSE` as a secret at M0.
+5. Steam: `steamcmd` upload step behind a manual approval, from M7.
 
 ---
 
-## 14. Build order for the first vertical slice (M1)
+## 15. Technical risks introduced by v0.2
 
-Proves the whole stack end-to-end in ~4 weeks:
-
-```
-Boot scene → services registered → MainMenu → name career modal → save created
-  → flat interior loads → walk → look at bed → [E] Sleep 8h → clock advances 480 min
-  → energy restored → walk to door → City loads → walk to facility
-  → coach dialogue → drill select → Finishing minigame (T1) → DrillResult
-  → attribute +1 toast → money ledger entry → walk home
-  → couch → TV composes a bulletin from today's events
-  → sleep → autosave → quit → Continue → state restored exactly
-```
-
-If that path works, every system in the design has been proven once. Everything after M1 is depth, not new architecture.
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Match gameplay overruns everything | Fatal | Fidelity ladder, 12-week cap, M5 ends with "good enough", not "perfect" |
+| Ball physics feels wrong | High | Custom kinematic ball from day one, 60 Hz fixed step, tuning harness scene |
+| 22 characters tank performance | High | LOD/impostor strategy in M5a; cap to 11v11 only, no subs rendering |
+| AI looks like headless chickens | High | Five states, one formation, heavy tuning time budgeted (2 weeks) |
+| Drill and match diverge into two control systems | High | **One** ball, **one** motor, **one** shooting/passing component, used by both |
+| Save schema churn during M5–M6 | Medium | Version bump + migration test per change |
+| Ten leagues of content | High | 4 city kits, data-only leagues (`D13`) |
+| Steam launch surprises | Medium | Steamworks integration starts M7, not M9 |
 
 ---
 
-## 15. Folder-level definition of done
+## 16. Definition of done
 
-A system is "done" when: Core logic exists and is unit-tested, data is authored (not hard-coded), presentation is wired, save state is versioned, strings are localised, it survives a save/load roundtrip, and it appears in `docs/` with its section number. Anything less is "implemented", not "done".
+Core logic tested, data authored (not hard-coded), presentation wired, save state versioned, strings localised, survives a save/load roundtrip, documented with a section reference. Anything less is "implemented", not "done".
