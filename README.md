@@ -5,7 +5,7 @@ A **first-person football career sim**. You live a young player's week — sleep
 > *Football Manager's career depth, The Sims' daily routine, and a first-person match you actually play.*
 
 **Engine:** Unity 6 LTS · **Language:** C# · **Platform:** PC / Steam
-**Status:** pre-production — design, architecture and plan complete; M0 not yet started.
+**Status:** M0 in progress — design, architecture and plan complete; **Core library implemented** (32 files + ~60 unit tests).
 
 ---
 
@@ -17,6 +17,7 @@ A **first-person football career sim**. You live a young player's week — sleep
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | C#/Unity architecture: Core-first layout, match layer, progression, saves, performance |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | 12 milestones, M0–M9, **≈ 49 weeks** to a Steam launch |
 | [`docs/SOURCE-TRANSLATION.md`](docs/SOURCE-TRANSLATION.md) | Literal English translation of both revisions of the Turkish note |
+| [`docs/DEV-SETUP.md`](docs/DEV-SETUP.md) | How to open the project, run the tests, and what is already coded |
 
 ---
 
@@ -71,6 +72,8 @@ From `GDD.md` §13:
 
 ```bash
 git clone <repo>
-dotnet test tests/Core.Tests      # fast, engine-free gameplay tests
-# then open unity/ with Unity 6 LTS
+dotnet test tests/Core.Tests      # ~60 tests, seconds, no Unity needed
+# then open FootbalSim/unity with Unity 6 LTS
 ```
+
+See [`docs/DEV-SETUP.md`](docs/DEV-SETUP.md) for the exact Unity settings and the current file map.

@@ -267,6 +267,13 @@ Career XP is **only** awarded from matches (`D17`), matching the source. Its onl
 
 ---
 
+### 6.3 Randomness (implemented)
+
+`IRandomSource` is implemented by **SplitMix32** (`SplitMixRandom`), not xorshift32. Sequential seeds are
+the common case in tests and saves, and xorshift32 returns near-zero first values for seeds 1, 2, 3, which
+silently skewed Poisson match simulation toward 0-0. SplitMix32 has no such weakness for three extra
+instructions. The seed is stored in the save; `UnityEngine.Random` is banned outside cosmetic VFX.
+
 ## 7. Match architecture (v0.2 — the big one)
 
 ### 7.1 Layers

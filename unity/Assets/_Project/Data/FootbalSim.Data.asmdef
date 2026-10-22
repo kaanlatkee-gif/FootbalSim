@@ -1,0 +1,14 @@
+{
+    "name": "FootbalSim.Data",
+    "rootNamespace": "FootbalSim.Data",
+    "references": ["FootbalSim.Core"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
